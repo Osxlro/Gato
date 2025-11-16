@@ -1,12 +1,32 @@
+/*
+ * ui.c
+ *
+ * Responsabilidades:
+ * - Proveer funciones para interactuar con la consola (Interfaz de Usuario).
+ * - "Limpiar" la terminal (clearScreen).
+ * - Mostrar menús estáticos (showMainMenu, showHelp).
+ * - Pausar la ejecución del programa (pauseEnter).
+ * - Renderizar el estado actual del tablero de juego (printBoard).
+ *
+ * Notas:
+ * - 'clearScreen' es una implementación portable (imprime líneas nuevas)
+ * para evitar 'system("clear")' o 'system("cls")'.
+ *
+ * Posibles bugs:
+ * - 'pauseEnter' usa 'getchar' y asume que el búfer está limpio,
+ * excepto por un '\n' previo. Si el búfer contiene más caracteres,
+ * podría no pausar o pausar varias veces.
+ */
+
 #include "ui.h"
 #include <stdio.h>
 
+// "Limpia" la pantalla imprimiendo varias líneas nuevas.
 void clearScreen(void) {
-    // Opción simple y portable: imprimir varias líneas en lugar de system("clear")
     for (int i = 0; i < 30; ++i) puts("");
 }
 
-
+// Muestra el menú principal del juego.
 void showMainMenu(void) {
     puts("+--------------------------------------+");
     puts("|           TIC-TAC-TOE (Gato)         |");
@@ -19,6 +39,7 @@ void showMainMenu(void) {
     printf("Seleccione una opcion: ");
 }
 
+// Muestra las instrucciones y reglas del juego.
 void showHelp(void) {
     puts("\n[AYUDA]");
     puts("- Objetivo: alinear 3 simbolos iguales (X u O).");
@@ -27,14 +48,15 @@ void showHelp(void) {
     puts("- Se guarda ranking en archivo CSV al finalizar la partida.");
 }
 
+// Pausa la ejecución hasta que el usuario presione Enter.
 void pauseEnter(void) {
     puts("\nPresiona Enter para continuar...");
     int c;
-    // limpiar buffer hasta newline
+    // Limpiar buffer
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
-
+// Dibuja el estado actual del tablero en la consola.
 void printBoard(const char board[3][3]) {
     puts("");
     puts("       Col: 1   2   3");

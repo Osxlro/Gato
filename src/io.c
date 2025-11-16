@@ -1,14 +1,43 @@
+/*
+ * io.c
+ *
+ * Responsabilidades:
+ * - Gestionar toda la entrada/salida (I/O) de archivos.
+ * - Leer el archivo 'ranking.csv' y cargarlo en un array de PlayerRecord (loadRanking).
+ * - Escribir un array de PlayerRecord de vuelta al archivo 'ranking.csv' (saveAllRanking).
+ * - Proveer una función 'upsert' (update/insert) para actualizar el ranking
+ * de forma segura, cargando, modificando y guardando (upsertResult).
+ * - Implementar la lógica para ordenar el ranking (sortRankingDesc).
+ * - Mostrar el ranking formateado en la consola (showRanking).
+ *
+ * Notas:
+ * - Este módulo encapsula el formato CSV.
+ * - La función 'upsertResult' es la interfaz principal para 'game.c'.
+ * - 'saveResult' es una función antigua/simple que solo añade al final (append)
+ * y no previene duplicados; 'upsertResult' es la correcta.
+ * - 'ieq' es un helper local para comparar nombres sin distinción de mayúsculas.
+ *
+ * Posibles bugs:
+ * - 'loadRanking' tiene un límite estático (p.ej. 2000) de registros.
+ * Si el CSV crece más, truncará la carga.
+ * 
+ * - La lectura de CSV con 'fscanf' es frágil. Si un nombre de jugador
+ * contuviera una coma, rompería el formato.
+ */
+
+// Librerias del juego
 #include "io.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
-
+// Librerias del Lenguaje
 #include "io.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
+// Compara dos cadenas de texto ignorando mayúsculas/minúsculas ('i' = ignore).
 static int ieq(const char *a, const char *b) { /* case-insensitive */
     for (; *a && *b; ++a, ++b) {
         char ca = (char)tolower((unsigned char)*a);
@@ -18,15 +47,8 @@ static int ieq(const char *a, const char *b) { /* case-insensitive */
     return *a == '\0' && *b == '\0';
 }
 
-int saveResult(const char *name, int wins, int draws, int losses, int score) {
-    if (!name || !*name) return 0;
-    FILE *f = fopen("ranking.csv", "a");
-    if (!f) return 0;
-    int ok = fprintf(f, "%s,%d,%d,%d,%d\n", name, wins, draws, losses, score) > 0;
-    fclose(f);
-    return ok;
-}
-
+// Carga todos los registros del archivo CSV (por defecto 'ranking.csv') a un array.
+// Devuelve el número de registros leídos, o -1 si hay error.
 int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
     FILE *f = fopen(filePath ? filePath : "ranking.csv", "r");
     if (!f) return -1;
@@ -37,6 +59,7 @@ int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
                    pr.name, &pr.wins, &pr.draws, &pr.losses, &pr.score) == 5) {
             arr[n++] = pr;
         } else {
+            // Si una linea no contiene valores o hay error, se saltea.
             int ch; while ((ch = fgetc(f)) != '\n' && ch != EOF) {}
         }
     }
@@ -44,6 +67,7 @@ int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
     return n;
 }
 
+// Sobrescribe el archivo CSV (modo 'w') con todos los registros del array.
 int saveAllRanking(const PlayerRecord arr[], int n, const char *filePath) {
     FILE *f = fopen(filePath ? filePath : "ranking.csv", "w");
     if (!f) return 0;
@@ -52,27 +76,29 @@ int saveAllRanking(const PlayerRecord arr[], int n, const char *filePath) {
                     arr[i].name, arr[i].wins, arr[i].draws,
                     arr[i].losses, arr[i].score) <= 0) {
             fclose(f);
-            return 0;
+            return 0; // Error de escritura
         }
     }
     fclose(f);
     return 1;
 }
 
+// Actualiza (acumulando) o Inserta un resultado. Carga todo, modifica y guarda.
 int upsertResult(const char *name, int wins, int draws, int losses, int score) {
     
     if (!name || !*name) return 0;
 
     PlayerRecord recs[2000];
     int n = loadRanking(recs, 2000, "ranking.csv");
-    if (n < 0) n = 0; /* archivo no existe aun */
+    if (n < 0) n = 0; /* archivo no existe aun, empezamos en 0 */
 
     int idx = -1;
+    // Buscar si el jugador ya existe (ignorando mayúsculas)
     for (int i = 0; i < n; ++i) {
         if (ieq(recs[i].name, name)) { idx = i; break; }
     }
-    if (idx < 0) { /* nuevo */
-        if (n >= 2000) return 0;
+    if (idx < 0) { /* nuevo jugador */
+        if (n >= 2000) return 0; // Array lleno
         strncpy(recs[n].name, name, NAME_MAX - 1);
         recs[n].name[NAME_MAX - 1] = '\0';
         recs[n].wins   = wins;
@@ -80,17 +106,20 @@ int upsertResult(const char *name, int wins, int draws, int losses, int score) {
         recs[n].losses = losses;
         recs[n].score  = score;
         n++;
-    } else { /* actualizar acumulando */
+    } else { /* actualizar acumulando stats */
         recs[idx].wins   += wins;
         recs[idx].draws  += draws;
         recs[idx].losses += losses;
         recs[idx].score  += score;
     }
+    // Guardar todos los registros de vuelta al archivo
     return saveAllRanking(recs, n, "ranking.csv");
 }
 
+// Ordena el array de registros por puntaje (descendente).
+// Usa el nombre (ascendente) como criterio de desempate.
 void sortRankingDesc(PlayerRecord arr[], int n) {
-    // Ordena por puntaje desc; desempate por nombre asc
+    // Ordenamiento de burbuja simple
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j + 1 < n; ++j) {
             int swap = 0;
@@ -108,6 +137,7 @@ void sortRankingDesc(PlayerRecord arr[], int n) {
     }
 }
 
+// Muestra el ranking formateado en la consola.
 void showRanking(const PlayerRecord arr[], int n) {
     puts("+----+------------------------------+---+---+---+--------+");
     puts("| #  | Nombre                       | G | E | P | Puntaje|");

@@ -1,3 +1,37 @@
+/*
+ * game.c
+ *
+ * Responsabilidades:
+ * - Implementar los bucles de juego principales: Jugador vs Jugador (playPVP)
+ * y Jugador vs PC (playPVC).
+ * - Gestionar el estado del tablero (initBoard, applyMove, isCellEmpty).
+ * - Implementar la lógica de turnos y la asignación de símbolos ('X'/'O').
+ * - Determinar el resultado de la partida (checkWin, boardFull).
+ * - Solicitar y validar la entrada de movimientos del usuario (readMove, isValidCell).
+ * - Persistir los resultados al final de cada partida (llamando a upsertResult de io.h).
+ * - Manejar la generación de números aleatorios para el jugador inicial (randomStarts).
+ * - Contener funciones auxiliares para la lógica del juego (scoreOf).
+ *
+ * Notas:
+ * - Este archivo es el "motor" central del juego.
+ * - Depende de 'ui.h' para la interfaz (clearScreen, printBoard).
+ * - Depende de 'io.h' para guardar los puntajes en 'ranking.csv'.
+ * - Depende de 'ai.h' para obtener el movimiento de la IA en el modo PVC.
+ * - El estado del juego (tablero, nombres) se maneja como variables locales
+ * dentro de las funciones de bucle de juego, no hay variables globales.
+ *
+ * Posibles bugs:
+ * - La función 'readMove' usa 'scanf' y una limpieza de búfer simple. Si un
+ * usuario ingresa "1 dos" o "1a", 'scanf' podría leer el '1' y dejar
+ * " dos\n" en el búfer, causando fallos en lecturas subsecuentes.
+ * 
+ * - La función 'readLine' usa 'fgets', lo cual es seguro contra desbordamiento.
+ * Sin embargo, si la entrada excede 'max', los caracteres restantes
+ * quedarán en el búfer 'stdin' y podrían ser leídos por la siguiente
+ * función de entrada (ej. 'getchar' para "jugar de nuevo"),
+ * desincronizando el flujo.
+ */
+
 // Librerias del juego
 #include "game.h"
 #include "ui.h"
@@ -14,13 +48,14 @@
 #define NAME_MAX 32
 #endif
 
-
+// Lee una línea de texto de forma segura desde stdin, evitando desbordamientos.
 static void readLine(char *buf, int max) {
     if (!fgets(buf, max, stdin)) { buf[0] = '\0'; return; }
     size_t len = strlen(buf);
     if (len && buf[len-1] == '\n') buf[len-1] = '\0';
 }
 
+// Solicita los nombres para Jugador 1 y Jugador 2.
 void askPlayerNames(char p1[], char p2[], int maxLen) {
     printf("Nombre Jugador 1: ");
     readLine(p1, maxLen);
@@ -30,19 +65,20 @@ void askPlayerNames(char p1[], char p2[], int maxLen) {
     readLine(p2, maxLen);
     if (p2[0] == '\0') strncpy(p2, "Jugador2", maxLen);
 }
-
+// Solicita el nombre del jugador humano para el modo JvPC.
 void askHumanName(char p1[], int maxLen) {
     printf("Tu nombre: ");
     readLine(p1, maxLen);
     if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
 }
 
-//
-
+// Inicializa la semilla del generador de números aleatorios si no se ha hecho.
 static int seeded = 0;
 static void ensureSeed(void) {
     if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
 }
+
+// Devuelve 0 o 1 aleatoriamente para decidir quién inicia.
 int randomStarts(void) { ensureSeed(); return rand() & 1; } /* 0 o 1 */
 
 /* ---------- JvJ con inicio aleatorio ---------- */
@@ -110,7 +146,6 @@ void playPVP(void) {
 
 /* ---------- JvPC con inicio aleatorio ---------- */
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
-
 void playPVC(void) {
     char human[NAME_MAX];
     const char pcName[] = "PC";
@@ -177,20 +212,25 @@ void playPVC(void) {
     if (ch=='s'||ch=='S') playPVC();
 }
 
+// Verifica si las coordenadas (r, c) están dentro del rango 1-3.
 int isValidCell(int r, int c) {
     return r >= 1 && r <= 3 && c >= 1 && c <= 3;
 }
 
+// Inicializa el tablero 3x3 con espacios vacíos ' '.
 void initBoard(char board[3][3]) {
     for (int r = 0; r < 3; ++r)
         for (int c = 0; c < 3; ++c)
             board[r][c] = ' ';
 }
 
+// Comprueba si una celda específica del tablero (coordenadas 1-3) está vacía.
 int isCellEmpty(const char board[3][3], int r, int c) {
     return board[r-1][c-1] == ' ';
 }
 
+// Coloca un símbolo (sym) en la celda (r, c) del tablero.
+// Devuelve 1 si tuvo éxito, 0 si la celda no era válida o estaba ocupada.
 int applyMove(char board[3][3], int r, int c, char sym) {
     if (!isValidCell(r, c)) return 0;
     if (!isCellEmpty(board, r, c)) return 0;
@@ -198,6 +238,7 @@ int applyMove(char board[3][3], int r, int c, char sym) {
     return 1;
 }
 
+// Verifica si el jugador con el símbolo 'sym' ha ganado (3 en línea).
 int checkWin(const char board[3][3], char sym) {
     // filas y columnas
     for (int i = 0; i < 3; ++i) {
@@ -210,6 +251,7 @@ int checkWin(const char board[3][3], char sym) {
     return 0;
 }
 
+// Comprueba si el tablero está lleno (no quedan espacios ' ').
 int boardFull(const char board[3][3]) {
     for (int r = 0; r < 3; ++r)
         for (int c = 0; c < 3; ++c)
@@ -217,6 +259,7 @@ int boardFull(const char board[3][3]) {
     return 1;
 }
 
+// Lee la entrada del usuario para fila y columna (ej: "1 2") y limpia el búfer.
 int readMove(int *r, int *c) {
     // lee dos enteros; simple, robusteceremos con limpieza de buffer
     int read = scanf("%d %d", r, c);
@@ -225,7 +268,8 @@ int readMove(int *r, int *c) {
     return (read == 2);
 }
 
+// Calcula el puntaje basado en victorias (3 pts) y empates (1 pto).
 int scoreOf(int wins, int draws, int losses) {
-    (void)losses;
+    (void)losses; // Evita el warning de "variable no usada"
     return 3*wins + 1*draws;
 }
