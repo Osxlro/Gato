@@ -1,6 +1,6 @@
 # Propuesta de Navegación y Pantallas – Gato (Terminal)
 
-> Nombre: Dominic Salvador Lopez Farias   |   Programación Estructurada  |  Fecha: 2025-11-16
+> Nombre: Oscurin   |   Programación Estructurada  |  Fecha: 2025-11-16
 
 ## Mapa de navegación (alto nivel)
 
