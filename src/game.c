@@ -39,14 +39,11 @@ void askHumanName(char p1[], int maxLen) {
 
 //
 
-
 static int seeded = 0;
 static void ensureSeed(void) {
     if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
 }
 int randomStarts(void) { ensureSeed(); return rand() & 1; } /* 0 o 1 */
-
-
 
 /* ---------- JvJ con inicio aleatorio ---------- */
 void playPVP(void) {
@@ -109,8 +106,6 @@ void playPVP(void) {
     int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
     if (ch=='s'||ch=='S') playPVP();
 }
-
-
 
 /* ---------- JvPC con inicio aleatorio ---------- */
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
@@ -180,9 +175,6 @@ void playPVC(void) {
     int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
     if (ch=='s'||ch=='S') playPVC();
 }
-
-
-
 
 int isValidCell(int r, int c) {
     return r >= 1 && r <= 3 && c >= 1 && c <= 3;
