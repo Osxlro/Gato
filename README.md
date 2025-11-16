@@ -106,3 +106,64 @@ Resultado: [Gana <Nombre> / Empate]
 - Atajos de teclado simples (números/letras).
 - Mensajes de error concretos.
 
+## PARTE I - MAPA DE NAVEGACIÓN
+
+```
+[INICIO]
+   |
+   v
+[MENU PRINCIPAL]
+   |--(1) Jugar -----------------------------.
+   |                                         |
+   |                                         v
+   |                            [Seleccionar modo]
+   |                               |        |
+   |                               |        +--(b) Jugador vs PC
+   |                               |                    |
+   |                               v                    v
+   |                      (a) Jugador vs Jugador   [Captura nombres]
+   |                               |                    |
+   |                               v                    v
+   |                          [Captura nombres]   [Init tablero]
+   |                               |                    |
+   |                               v                    v
+   |                          [Init tablero]      [Bucle de turnos]
+   |                               |                    |
+   |                               v                    v
+   |                          [Bucle de turnos] --> [Leer/validar jugada]
+   |                               |                    |
+   |                               v                    v
+   |                         [Check win/empate] <--------
+   |                               |
+   |             .------------------+------------------.
+   |             |                                     |
+   |             v                                     v
+   |       [Victoria]                           [Empate]
+   |             \___________________________ ________/
+   |                                         V
+   |                                  [Calcular puntaje]
+   |                                         |
+   |                                         v
+   |                               [Guardar en archivo]
+   |                                         |
+   |                                         v
+   |                                  [Mostrar ranking]
+   |                                         |
+   |                                         v
+   |                               [¿Jugar de nuevo?]
+   |                                   |        |
+   |                                   |s/n     | n
+   |                                   v        v
+   |                            [Reiniciar]  [VOLVER]
+   |
+   +--(2) Tabla de posiciones --> [Mostrar ranking] --> [VOLVER]
+   |
+   +--(3) Ayuda/Instrucciones  --> [Mostrar ayuda]   --> [VOLVER]
+   |
+   +--(4) Salir  ----------------------------------------> [FIN]
+```
+
+Notas:
+- Persistencia en CSV al terminar cada partida: nombre, G/E/P, puntaje.
+- Ranking ordenado por puntaje (descendente).
+- Validaciones: entrada (1..3), casilla libre, opción de menú correcta.
