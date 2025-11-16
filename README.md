@@ -1,8 +1,13 @@
-# Propuesta de Navegación y Pantallas – Gato (Terminal)
+# GATO JUEGO PROYECTO
 
 > Nombre: Oscurin   |   Programación Estructurada  |  Fecha: 2025-11-16
 
-## Mapa de navegación (alto nivel)
+
+## PARTE I - MAPA DE NAVEGACIÓN
+
+> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7
+
+### Mapa de navegación (alto nivel)
 
 ```
 [Inicio]
@@ -18,7 +23,7 @@
 
 ---
 
-## Pantalla: Inicio
+### Pantalla: Inicio
 
 ```
 +--------------------------------------------------+
@@ -32,7 +37,7 @@
 Seleccione una opción: _
 ```
 
-## Pantalla: Selección de modo de juego
+### Pantalla: Selección de modo de juego
 ```
 +-------------------- MODO DE JUEGO ----------------+
 | a) Jugador vs Jugador                             |
@@ -42,7 +47,7 @@ Seleccione una opción: _
 Opción: _
 ```
 
-## Pantalla: Captura de nombres
+### Pantalla: Captura de nombres
 ```
 +-------------------- NOMBRES -----------------------+
 | Ingrese nombre del Jugador 1 (X): ____________     |
@@ -51,7 +56,7 @@ Opción: _
 +----------------------------------------------------+
 ```
 
-## Pantalla: Tablero 3x3
+### Pantalla: Tablero 3x3
 ```
     Col: 1   2   3
 Fil       |   |   
@@ -65,19 +70,19 @@ Turno: <Nombre> (<X/O>)
 Ingrese fila y columna (p.ej., 2 3) o 'q' para salir: _
 ```
 
-### Mensajes de validación (ejemplos)
+#### Mensajes de validación (ejemplos)
 - **Movimiento inválido**: casilla ocupada o fuera de rango (1-3).
 - **Turno**: alterna automáticamente.
 - **Victoria**: muestra línea ganadora (h, v, d) y nombre.
 - **Empate**: tablero lleno sin ganador.
 
-## Pantalla: Resultado
+### Pantalla: Resultado
 ```
 Resultado: [Gana <Nombre> / Empate]
 ¿Jugar de nuevo? (s/n): _
 ```
 
-## Pantalla: Tabla de posiciones (Ranking)
+### Pantalla: Tabla de posiciones (Ranking)
 ```
 +------------------ RANKING (desc) ------------------+
 | # | Nombre        | G | E | P | Puntaje           |
@@ -89,14 +94,14 @@ Resultado: [Gana <Nombre> / Empate]
 (Ordenado por Puntaje desc). Enter para volver.
 ```
 
-## Pantalla: Ayuda / Instrucciones
+### Pantalla: Ayuda / Instrucciones
 - Objetivo: alinear 3 símbolos iguales (X u O) en línea.
 - Entrada: coordenadas **fila columna** (1..3 1..3).
 - Puntuación sugerida: **G=3, E=1, P=0** (configurable).
 - Persistencia: se guarda archivo `ranking.csv` al final de cada partida.
 
 ---
-### Notas de accesibilidad (terminal)
+#### Notas de accesibilidad (terminal)
 - Contraste alto y etiquetas claras.
 - Atajos de teclado simples (números/letras).
 - Mensajes de error concretos.
