@@ -2,10 +2,13 @@
 #include "game.h"
 #include "ui.h"
 #include "io.h"
+#include "ai.h"
 
 // Librerias por el Lenguaje
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifndef NAME_MAX
 #define NAME_MAX 32
@@ -13,31 +16,172 @@
 
 
 static void readLine(char *buf, int max) {
-    if (!fgets(buf, max, stdin)) {
-        buf[0] = '\0';
-        return;
-    }
-    
+    if (!fgets(buf, max, stdin)) { buf[0] = '\0'; return; }
     size_t len = strlen(buf);
     if (len && buf[len-1] == '\n') buf[len-1] = '\0';
 }
 
 void askPlayerNames(char p1[], char p2[], int maxLen) {
-    printf("Nombre Jugador 1 (X): ");
+    printf("Nombre Jugador 1: ");
     readLine(p1, maxLen);
     if (p1[0] == '\0') strncpy(p1, "Jugador1", maxLen);
 
-    
-    printf("Nombre Jugador 2 (O): ");
+    printf("Nombre Jugador 2: ");
     readLine(p2, maxLen);
     if (p2[0] == '\0') strncpy(p2, "Jugador2", maxLen);
 }
 
-static void askHumanName(char p1[], int maxLen) {
-    printf("Tu nombre (X): ");
+void askHumanName(char p1[], int maxLen) {
+    printf("Tu nombre: ");
     readLine(p1, maxLen);
     if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
 }
+
+//
+
+
+static int seeded = 0;
+static void ensureSeed(void) {
+    if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
+}
+int randomStarts(void) { ensureSeed(); return rand() & 1; } /* 0 o 1 */
+
+
+
+/* ---------- JvJ con inicio aleatorio ---------- */
+void playPVP(void) {
+    char name1[NAME_MAX], name2[NAME_MAX];
+    askPlayerNames(name1, name2, NAME_MAX);
+
+    char board[3][3];
+    initBoard(board);
+
+    /* Quien inicia lleva 'X' */
+    int starter = randomStarts();      /* 0 -> name1 empieza, 1 -> name2 empieza */
+    int current = starter;             /* 0 o 1 */
+    int r, c;
+
+    int wins[2]  = {0,0};
+    int draws[2] = {0,0};
+    int losses[2]= {0,0};
+
+    for (;;) {
+        clearScreen();
+        printf("Modo: Jugador vs Jugador\n");
+        printf("Inicia: %s (X)\n", starter==0 ? name1 : name2);
+        printf("Turno:  %s (%c)\n",
+               current==0 ? name1 : name2,
+               (current==starter) ? 'X' : 'O');
+        printBoard(board);
+
+        printf("Ingresa fila y columna (1..3 1..3): ");
+        if (!readMove(&r, &c)) { puts("Entrada invalida."); pauseEnter(); continue; }
+        if (!isValidCell(r, c)) { puts("Fuera de rango (1..3)."); pauseEnter(); continue; }
+        if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
+
+        char sym = (current==starter) ? 'X' : 'O';
+        applyMove(board, r, c, sym);
+
+        if (checkWin(board, sym)) {
+            clearScreen(); printBoard(board);
+            printf("\nGana %s (%c)\n", current==0 ? name1 : name2, sym);
+            wins[current]++; losses[1-current]++;
+            break;
+        }
+        if (boardFull(board)) {
+            clearScreen(); printBoard(board);
+            puts("\nEmpate!");
+            draws[0]++; draws[1]++;
+            break;
+        }
+        current = 1 - current;
+    }
+
+    int score0 = scoreOf(wins[0], draws[0], losses[0]);
+    int score1 = scoreOf(wins[1], draws[1], losses[1]);
+
+    if (!upsertResult(name1, wins[0], draws[0], losses[0], score0))
+        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Jugador 1.");
+    if (!upsertResult(name2, wins[1], draws[1], losses[1], score1))
+        puts("[ADVERTENCIA] No se pudo actualizar ranking para Jugador 2.");
+
+    printf("\nJugar otra partida JvJ? (s/n): ");
+    int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
+    if (ch=='s'||ch=='S') playPVP();
+}
+
+
+
+/* ---------- JvPC con inicio aleatorio ---------- */
+extern void pcMove(char board[3][3], char pcSym, char humanSym);
+
+void playPVC(void) {
+    char human[NAME_MAX];
+    const char pcName[] = "PC";
+    askHumanName(human, NAME_MAX);
+
+    char board[3][3];
+    initBoard(board);
+
+    int starter = randomStarts(); /* 0 -> humano inicia (X), 1 -> PC inicia (X) */
+    int current = starter;
+
+    int winsH=0, drawsH=0, lossesH=0;
+    int winsPC=0, drawsPC=0, lossesPC=0;
+
+    int r,c;
+    for (;;) {
+        clearScreen();
+        printf("Modo: Jugador vs PC\n");
+        printf("Inicia: %s (X)\n", starter==0 ? human : pcName);
+        printf("Turno:  %s (%c)\n", current==0 ? human : pcName,
+               (current==starter) ? 'X' : 'O');
+        printBoard(board);
+
+        if (current == 0) { /* Humano */
+            printf("Ingresa fila y columna (1..3 1..3): ");
+            if (!readMove(&r,&c)) { puts("Entrada invalida."); pauseEnter(); continue; }
+            if (!isValidCell(r,c)) { puts("Fuera de rango (1..3)."); pauseEnter(); continue; }
+            if (!isCellEmpty(board,r,c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
+            char sym = (starter==0) ? 'X' : 'O';
+            applyMove(board, r, c, sym);
+            if (checkWin(board, sym)) {
+                clearScreen(); printBoard(board);
+                printf("\nGana %s (%c)\n", human, sym);
+                winsH++; lossesPC++; break;
+            }
+        } else { /* PC */
+            char sym = (starter==1) ? 'X' : 'O';
+            pcMove(board, sym, (sym=='X') ? 'O' : 'X');
+            if (checkWin(board, sym)) {
+                clearScreen(); printBoard(board);
+                printf("\nGana %s (%c)\n", pcName, sym);
+                winsPC++; lossesH++; break;
+            }
+        }
+
+        if (boardFull(board)) {
+            clearScreen(); printBoard(board);
+            puts("\nEmpate!");
+            drawsH++; drawsPC++; break;
+        }
+        current = 1 - current;
+    }
+
+    int scoreH  = scoreOf(winsH, drawsH, lossesH);
+    int scorePC = scoreOf(winsPC, drawsPC, lossesPC);
+
+    if (!upsertResult(human, winsH, drawsH, lossesH, scoreH))
+        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Humano.");
+    if (!upsertResult(pcName, winsPC, drawsPC, lossesPC, scorePC))
+        puts("[ADVERTENCIA] No se pudo actualizar ranking para PC.");
+
+    printf("\nJugar otra partida JvPC? (s/n): ");
+    int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
+    if (ch=='s'||ch=='S') playPVC();
+}
+
+
 
 
 int isValidCell(int r, int c) {
@@ -91,196 +235,4 @@ int readMove(int *r, int *c) {
 int scoreOf(int wins, int draws, int losses) {
     (void)losses;
     return 3*wins + 1*draws;
-}
-
-void playPVP(void) {
-    char name1[NAME_MAX], name2[NAME_MAX];
-    askPlayerNames(name1, name2, NAME_MAX);
-
-    char board[3][3];
-    initBoard(board);
-
-    int wins1 = 0, draws1 = 0, losses1 = 0;
-    int wins2 = 0, draws2 = 0, losses2 = 0;
-
-    int current = 0;            // 0 -> P1 (X), 1 -> P2 (O)
-    int r, c;
-    char sym;
-
-    for (;;) {
-        clearScreen();
-        printf("Modo: Jugador vs Jugador\n");
-        printf("Turno: %s (%c)\n", current == 0 ? name1 : name2, current == 0 ? 'X' : 'O');
-        printBoard(board);
-
-        printf("Ingresa fila y columna (1..3 1..3): ");
-        if (!readMove(&r, &c)) {
-            puts("Entrada inválida. Intenta de nuevo.");
-            pauseEnter();
-            continue;
-        }
-        if (!isValidCell(r, c)) {
-            puts("Coordenadas fuera de rango (1..3).");
-            pauseEnter();
-            continue;
-        }
-        if (!isCellEmpty(board, r, c)) {
-            puts("La casilla está ocupada.");
-            pauseEnter();
-            continue;
-        }
-
-        sym = (current == 0) ? 'X' : 'O';
-        applyMove(board, r, c, sym);
-
-        // ¿ganó alguien?
-        if (checkWin(board, sym)) {
-            clearScreen();
-            printBoard(board);
-            if (current == 0) {
-                printf("\n¡Gana %s (X)!\n", name1);
-                wins1++; losses2++;
-            } else {
-                printf("\n¡Gana %s (O)!\n", name2);
-                wins2++; losses1++;
-            }
-            break;
-        }
-
-        // ¿empate?
-        if (boardFull(board)) {
-            clearScreen();
-            printBoard(board);
-            puts("\n¡Empate!");
-            draws1++; draws2++;
-            break;
-        }
-
-        // Cambiar turno
-        current = 1 - current;
-    }
-
-    // Calcular puntajes y guardar resultados individuales
-    int score1 = scoreOf(wins1, draws1, losses1);
-    int score2 = scoreOf(wins2, draws2, losses2);
-
-    // Guardar resultados (cada jugador forma una fila en el CSV)
-    if (!saveResult(name1, wins1, draws1, losses1, score1)) {
-        puts("\n[ADVERTENCIA] No se pudo guardar el resultado de P1 en ranking.csv");
-    }
-    if (!saveResult(name2, wins2, draws2, losses2, score2)) {
-        puts("[ADVERTENCIA] No se pudo guardar el resultado de P2 en ranking.csv");
-    }
-
-    // ¿Jugar de nuevo?
-    printf("\n¿Jugar otra partida JvJ? (s/n): ");
-    int ch = getchar();
-    int dump; while ((dump = getchar()) != '\n' && dump != EOF) {}
-    if (ch == 's' || ch == 'S') {
-        playPVP(); // recursivo para simplificar; también puedes usar un bucle externo
-    }
-}
-
-
-
-void playPVC(void) {
-    char human[NAME_MAX];
-    const char pcName[] = "PC";
-    askHumanName(human, NAME_MAX);
-
-    char board[3][3];
-    initBoard(board);
-
-    // Contadores por partida
-    int winsH = 0, drawsH = 0, lossesH = 0;
-    int winsPC = 0, drawsPC = 0, lossesPC = 0;
-
-    int r, c;
-    // Humano = 'X' (empieza), PC = 'O'
-    for (;;) {
-        // --- Turno Humano ---
-        for (;;) {
-            clearScreen();
-            printf("Modo: Jugador vs PC\n");
-            printf("Turno: %s (X)\n", human);
-            printBoard(board);
-
-            printf("Ingresa fila y columna (1..3 1..3): ");
-            if (!readMove(&r, &c)) {
-                puts("Entrada inválida. Intenta de nuevo.");
-                pauseEnter();
-                continue;
-            }
-            if (!isValidCell(r, c)) {
-                puts("Coordenadas fuera de rango (1..3).");
-                pauseEnter();
-                continue;
-            }
-            if (!isCellEmpty(board, r, c)) {
-                puts("La casilla está ocupada.");
-                pauseEnter();
-                continue;
-            }
-            applyMove(board, r, c, 'X');
-            break;
-        }
-
-        // ¿Gana Humano?
-        if (checkWin(board, 'X')) {
-            clearScreen();
-            printBoard(board);
-            printf("\n¡Gana %s (X)!\n", human);
-            winsH++; lossesPC++;
-            break;
-        }
-        // ¿Empate?
-        if (boardFull(board)) {
-            clearScreen();
-            printBoard(board);
-            puts("\n¡Empate!");
-            drawsH++; drawsPC++;
-            break;
-        }
-
-        // --- Turno PC ---
-        // IA elegirá una casilla y colocará 'O'
-        extern void pcMove(char board[3][3], char pcSym, char humanSym);
-        pcMove(board, 'O', 'X');
-
-        // ¿Gana PC?
-        if (checkWin(board, 'O')) {
-            clearScreen();
-            printBoard(board);
-            printf("\n¡Gana %s (O)!\n", pcName);
-            winsPC++; lossesH++;
-            break;
-        }
-        // ¿Empate?
-        if (boardFull(board)) {
-            clearScreen();
-            printBoard(board);
-            puts("\n¡Empate!");
-            drawsH++; drawsPC++;
-            break;
-        }
-    }
-
-    // Calcular puntajes y guardar
-    int scoreH  = scoreOf(winsH, drawsH, lossesH);
-    int scorePC = scoreOf(winsPC, drawsPC, lossesPC);
-
-    if (!saveResult(human, winsH, drawsH, lossesH, scoreH)) {
-        puts("\n[ADVERTENCIA] No se pudo guardar el resultado del humano en ranking.csv");
-    }
-    if (!saveResult(pcName, winsPC, drawsPC, lossesPC, scorePC)) {
-        puts("[ADVERTENCIA] No se pudo guardar el resultado de la PC en ranking.csv");
-    }
-
-    // ¿Jugar de nuevo?
-    printf("\n¿Jugar otra partida JvPC? (s/n): ");
-    int ch = getchar();
-    int dump; while ((dump = getchar()) != '\n' && dump != EOF) {}
-    if (ch == 's' || ch == 'S') {
-        playPVC(); // simple y suficiente para este proyecto
-    }
 }

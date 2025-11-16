@@ -3,6 +3,7 @@
 #include "game.h"
 #include "io.h"
 #include <stdio.h>
+#include <string.h>
 
 int mainMenuLoop(void) {
     int running = 1;
@@ -24,7 +25,7 @@ int mainMenuLoop(void) {
             puts("[1] Seleccione modo:");
             puts("a) Jugador vs Jugador");
             puts("b) Jugador vs PC");
-            printf("Opción: ");
+            printf("Opcion: ");
             char m = getchar();
             while ((ch = getchar()) != '\n' && ch != EOF) {}
             if (m == 'a' || m == 'A') {

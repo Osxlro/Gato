@@ -10,6 +10,11 @@ int  boardFull(const char board[3][3]);
 int  readMove(int *r, int *c);
 int  scoreOf(int wins, int draws, int losses);
 
+void askPlayerNames(char p1[], char p2[], int maxLen);
+void askHumanName(char p1[], int maxLen);   /* para PVC */
+int  randomStarts(void);                    /* devuelve 0 o 1 */
+
+
 // flujos de juego (se implementarán gradualmente)
 void playPVP(void);
 void playPVC(void);
