@@ -106,7 +106,7 @@ Resultado: [Gana <Nombre> / Empate]
 - Atajos de teclado simples (números/letras).
 - Mensajes de error concretos.
 
-## PARTE I - MAPA DE NAVEGACIÓN
+## PARTE II - DIAGRAMA DE BLOQUES
 
 ```
 [INICIO]
