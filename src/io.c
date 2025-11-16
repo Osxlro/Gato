@@ -60,6 +60,7 @@ int saveAllRanking(const PlayerRecord arr[], int n, const char *filePath) {
 }
 
 int upsertResult(const char *name, int wins, int draws, int losses, int score) {
+    
     if (!name || !*name) return 0;
 
     PlayerRecord recs[2000];

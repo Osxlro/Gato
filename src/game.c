@@ -107,6 +107,7 @@ void playPVP(void) {
     if (ch=='s'||ch=='S') playPVP();
 }
 
+
 /* ---------- JvPC con inicio aleatorio ---------- */
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
 
