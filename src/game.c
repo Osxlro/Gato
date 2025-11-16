@@ -33,6 +33,13 @@ void askPlayerNames(char p1[], char p2[], int maxLen) {
     if (p2[0] == '\0') strncpy(p2, "Jugador2", maxLen);
 }
 
+static void askHumanName(char p1[], int maxLen) {
+    printf("Tu nombre (X): ");
+    readLine(p1, maxLen);
+    if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
+}
+
+
 int isValidCell(int r, int c) {
     return r >= 1 && r <= 3 && c >= 1 && c <= 3;
 }
@@ -175,6 +182,105 @@ void playPVP(void) {
 }
 
 
+
 void playPVC(void) {
-    puts("[JvPC] (pendiente de implementación)");
+    char human[NAME_MAX];
+    const char pcName[] = "PC";
+    askHumanName(human, NAME_MAX);
+
+    char board[3][3];
+    initBoard(board);
+
+    // Contadores por partida
+    int winsH = 0, drawsH = 0, lossesH = 0;
+    int winsPC = 0, drawsPC = 0, lossesPC = 0;
+
+    int r, c;
+    // Humano = 'X' (empieza), PC = 'O'
+    for (;;) {
+        // --- Turno Humano ---
+        for (;;) {
+            clearScreen();
+            printf("Modo: Jugador vs PC\n");
+            printf("Turno: %s (X)\n", human);
+            printBoard(board);
+
+            printf("Ingresa fila y columna (1..3 1..3): ");
+            if (!readMove(&r, &c)) {
+                puts("Entrada inválida. Intenta de nuevo.");
+                pauseEnter();
+                continue;
+            }
+            if (!isValidCell(r, c)) {
+                puts("Coordenadas fuera de rango (1..3).");
+                pauseEnter();
+                continue;
+            }
+            if (!isCellEmpty(board, r, c)) {
+                puts("La casilla está ocupada.");
+                pauseEnter();
+                continue;
+            }
+            applyMove(board, r, c, 'X');
+            break;
+        }
+
+        // ¿Gana Humano?
+        if (checkWin(board, 'X')) {
+            clearScreen();
+            printBoard(board);
+            printf("\n¡Gana %s (X)!\n", human);
+            winsH++; lossesPC++;
+            break;
+        }
+        // ¿Empate?
+        if (boardFull(board)) {
+            clearScreen();
+            printBoard(board);
+            puts("\n¡Empate!");
+            drawsH++; drawsPC++;
+            break;
+        }
+
+        // --- Turno PC ---
+        // IA elegirá una casilla y colocará 'O'
+        extern void pcMove(char board[3][3], char pcSym, char humanSym);
+        pcMove(board, 'O', 'X');
+
+        // ¿Gana PC?
+        if (checkWin(board, 'O')) {
+            clearScreen();
+            printBoard(board);
+            printf("\n¡Gana %s (O)!\n", pcName);
+            winsPC++; lossesH++;
+            break;
+        }
+        // ¿Empate?
+        if (boardFull(board)) {
+            clearScreen();
+            printBoard(board);
+            puts("\n¡Empate!");
+            drawsH++; drawsPC++;
+            break;
+        }
+    }
+
+    // Calcular puntajes y guardar
+    int scoreH  = scoreOf(winsH, drawsH, lossesH);
+    int scorePC = scoreOf(winsPC, drawsPC, lossesPC);
+
+    if (!saveResult(human, winsH, drawsH, lossesH, scoreH)) {
+        puts("\n[ADVERTENCIA] No se pudo guardar el resultado del humano en ranking.csv");
+    }
+    if (!saveResult(pcName, winsPC, drawsPC, lossesPC, scorePC)) {
+        puts("[ADVERTENCIA] No se pudo guardar el resultado de la PC en ranking.csv");
+    }
+
+    // ¿Jugar de nuevo?
+    printf("\n¿Jugar otra partida JvPC? (s/n): ");
+    int ch = getchar();
+    int dump; while ((dump = getchar()) != '\n' && dump != EOF) {}
+    if (ch == 's' || ch == 'S') {
+        playPVC(); // simple y suficiente para este proyecto
+    }
 }
