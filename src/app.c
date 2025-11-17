@@ -45,7 +45,7 @@ int mainMenuLoop(void) {
         if (scanf("%d", &option) != 1) {
             // Error de entrada: limpiar el búfer
             int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
-            puts("\nEntrada inválida.");
+            puts("\nEntrada invalida.");
             pauseEnter();
             continue;
         }
@@ -58,6 +58,7 @@ int mainMenuLoop(void) {
             puts("[1] Seleccione modo:");
             puts("a) Jugador vs Jugador");
             puts("b) Jugador vs PC");
+            puts("c) Volver");
             printf("Opcion: ");
             char m = getchar(); // Leer la opción del submenú
             // Limpiar el búfer de entrada
@@ -67,8 +68,11 @@ int mainMenuLoop(void) {
                 playPVP(); // Iniciar modo JvJ
             } else if (m == 'b' || m == 'B') {
                 playPVC(); // Iniciar modo JvPC
+            } else if (m == 'c' || m == 'B') {
+                pauseEnter();
+                break;
             } else {
-                puts("Opción inválida.");
+                puts("Opcion invalida.");
             }
             pauseEnter();
             break;
@@ -99,7 +103,7 @@ int mainMenuLoop(void) {
             break;
 
         default:
-            puts("Opción inválida.");
+            puts("Opcion invalida.");
             pauseEnter();
             break;
         }

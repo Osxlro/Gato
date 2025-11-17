@@ -29,7 +29,7 @@ void clearScreen(void) {
 // Muestra el menú principal del juego.
 void showMainMenu(void) {
     puts("+--------------------------------------+");
-    puts("|           TIC-TAC-TOE (Gato)         |");
+    puts("|              (Gato)                  |");
     puts("+--------------------------------------+");
     puts("| 1) Jugar                             |");
     puts("| 2) Tabla de posiciones (ranking)     |");
@@ -42,10 +42,11 @@ void showMainMenu(void) {
 // Muestra las instrucciones y reglas del juego.
 void showHelp(void) {
     puts("\n[AYUDA]");
-    puts("- Objetivo: alinear 3 simbolos iguales (X u O).");
-    puts("- Entrada: coordenadas fila columna (1..3 1..3).");
-    puts("- Puntaje sugerido: G=3, E=1, P=0.");
-    puts("- Se guarda ranking en archivo CSV al finalizar la partida.");
+    puts("- Objetivo: Alinear 3 simbolos iguales (X u O).\n");
+    puts("- Entrada:  Coordenadas fila columna ('1 3'..'1 4'..).\n");
+    puts("- Puntaje sugerido:"); 
+    puts("  G=3, E=1, P=0.\n");
+    puts("Se guarda el Score del usuario en el Ranking.\n");
 }
 
 // Pausa la ejecución hasta que el usuario presione Enter.
@@ -59,19 +60,19 @@ void pauseEnter(void) {
 // Dibuja el estado actual del tablero en la consola.
 void printBoard(const char board[3][3]) {
     puts("");
-    puts("       Col: 1   2   3");
+    puts("  Col:  1   2   3");
     puts("Fil");
-    printf(" 1     %c | %c | %c \n",
+    printf(" 1      %c | %c | %c \n",
         board[0][0] ? board[0][0] : ' ',
         board[0][1] ? board[0][1] : ' ',
         board[0][2] ? board[0][2] : ' ');
     puts("       ---+---+---");
-    printf(" 2     %c | %c | %c \n",
+    printf(" 2      %c | %c | %c \n",
         board[1][0] ? board[1][0] : ' ',
         board[1][1] ? board[1][1] : ' ',
         board[1][2] ? board[1][2] : ' ');
     puts("       ---+---+---");
-    printf(" 3     %c | %c | %c \n",
+    printf(" 3      %c | %c | %c \n",
         board[2][0] ? board[2][0] : ' ',
         board[2][1] ? board[2][1] : ' ',
         board[2][2] ? board[2][2] : ' ');

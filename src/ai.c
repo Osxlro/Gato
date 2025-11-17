@@ -68,6 +68,8 @@ static int takeFirst(char board[3][3], char sym, const int coords[][2], int n) {
     return 0;
 }
 
+/* IA Principal */
+
 // Función principal de la IA: decide y aplica el mejor movimiento.
 void pcMove(char board[3][3], char pcSym, char humanSym) {
     

@@ -57,6 +57,7 @@ static void readLine(char *buf, int max) {
 
 // Solicita los nombres para Jugador 1 y Jugador 2.
 void askPlayerNames(char p1[], char p2[], int maxLen) {
+    clearScreen();
     printf("Nombre Jugador 1: ");
     readLine(p1, maxLen);
     if (p1[0] == '\0') strncpy(p1, "Jugador1", maxLen);
@@ -67,6 +68,7 @@ void askPlayerNames(char p1[], char p2[], int maxLen) {
 }
 // Solicita el nombre del jugador humano para el modo JvPC.
 void askHumanName(char p1[], int maxLen) {
+    clearScreen();
     printf("Tu nombre: ");
     readLine(p1, maxLen);
     if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
@@ -90,7 +92,7 @@ void playPVP(void) {
     initBoard(board);
 
     /* Quien inicia lleva 'X' */
-    int starter = randomStarts();      /* 0 -> name1 empieza, 1 -> name2 empieza */
+    int starter = randomStarts();      /* 0 -> nombre1 empieza, 1 -> nombre2 empieza */
     int current = starter;             /* 0 o 1 */
     int r, c;
 
@@ -101,15 +103,15 @@ void playPVP(void) {
     for (;;) {
         clearScreen();
         printf("Modo: Jugador vs Jugador\n");
-        printf("Inicia: %s (X)\n", starter==0 ? name1 : name2);
+        printf("Inicia: %s \n", starter==0 ? name1 : name2);
         printf("Turno:  %s (%c)\n",
                current==0 ? name1 : name2,
                (current==starter) ? 'X' : 'O');
         printBoard(board);
 
-        printf("Ingresa fila y columna (1..3 1..3): ");
+        printf("Ingresa fila y columna ([1 3]..[2 1]..): ");
         if (!readMove(&r, &c)) { puts("Entrada invalida."); pauseEnter(); continue; }
-        if (!isValidCell(r, c)) { puts("Fuera de rango (1..3)."); pauseEnter(); continue; }
+        if (!isValidCell(r, c)) { puts("Fuera de rango."); pauseEnter(); continue; }
         if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
 
         char sym = (current==starter) ? 'X' : 'O';
@@ -134,9 +136,9 @@ void playPVP(void) {
     int score1 = scoreOf(wins[1], draws[1], losses[1]);
 
     if (!upsertResult(name1, wins[0], draws[0], losses[0], score0))
-        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Jugador 1.");
+        puts("\n[ADVERTENCIA] No se pudo actualizar Score para Jugador 1.");
     if (!upsertResult(name2, wins[1], draws[1], losses[1], score1))
-        puts("[ADVERTENCIA] No se pudo actualizar ranking para Jugador 2.");
+        puts("[ADVERTENCIA] No se pudo actualizar Score para Jugador 2.");
 
     printf("\nJugar otra partida JvJ? (s/n): ");
     int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
@@ -148,7 +150,7 @@ void playPVP(void) {
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
 void playPVC(void) {
     char human[NAME_MAX];
-    const char pcName[] = "PC";
+    const char pcName[] = "Jarvis (Graba esto porfavor)";
     askHumanName(human, NAME_MAX);
 
     char board[3][3];
@@ -164,15 +166,15 @@ void playPVC(void) {
     for (;;) {
         clearScreen();
         printf("Modo: Jugador vs PC\n");
-        printf("Inicia: %s (X)\n", starter==0 ? human : pcName);
+        printf("Inicia: %s \n", starter==0 ? human : pcName);
         printf("Turno:  %s (%c)\n", current==0 ? human : pcName,
                (current==starter) ? 'X' : 'O');
         printBoard(board);
 
         if (current == 0) { /* Humano */
-            printf("Ingresa fila y columna (1..3 1..3): ");
+            printf("Ingresa fila y columna ([1 3]..[2 1]..): ");
             if (!readMove(&r,&c)) { puts("Entrada invalida."); pauseEnter(); continue; }
-            if (!isValidCell(r,c)) { puts("Fuera de rango (1..3)."); pauseEnter(); continue; }
+            if (!isValidCell(r,c)) { puts("Fuera de rango."); pauseEnter(); continue; }
             if (!isCellEmpty(board,r,c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
             char sym = (starter==0) ? 'X' : 'O';
             applyMove(board, r, c, sym);
@@ -203,7 +205,7 @@ void playPVC(void) {
     int scorePC = scoreOf(winsPC, drawsPC, lossesPC);
 
     if (!upsertResult(human, winsH, drawsH, lossesH, scoreH))
-        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Humano.");
+        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Jugador.");
     if (!upsertResult(pcName, winsPC, drawsPC, lossesPC, scorePC))
         puts("[ADVERTENCIA] No se pudo actualizar ranking para PC.");
 
@@ -270,6 +272,6 @@ int readMove(int *r, int *c) {
 
 // Calcula el puntaje basado en victorias (3 pts) y empates (1 pto).
 int scoreOf(int wins, int draws, int losses) {
-    (void)losses; // Evita el warning de "variable no usada"
+    (void)losses;
     return 3*wins + 1*draws;
 }
