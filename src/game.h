@@ -1,6 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
+// Nombre de la IA
+#define AI_PLAYER_NAME "Jarvis (PC)"
+
 // --- Lógica del Tablero ---
 
 // Verifica si la celda (r, c) está en el rango [1, 3].

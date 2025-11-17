@@ -150,13 +150,13 @@ void playPVP(void) {
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
 void playPVC(void) {
     char human[NAME_MAX];
-    const char pcName[] = "Jarvis (Graba esto porfavor)";
+    const char pcName[] = AI_PLAYER_NAME;
     askHumanName(human, NAME_MAX);
 
     char board[3][3];
     initBoard(board);
 
-    int starter = randomStarts(); /* 0 -> humano inicia (X), 1 -> PC inicia (X) */
+    int starter = randomStarts(); /* 0 -> Jugador inicia (X), 1 -> PC inicia (X) */
     int current = starter;
 
     int winsH=0, drawsH=0, lossesH=0;
@@ -171,7 +171,7 @@ void playPVC(void) {
                (current==starter) ? 'X' : 'O');
         printBoard(board);
 
-        if (current == 0) { /* Humano */
+        if (current == 0) { /* Jugador */
             printf("Ingresa fila y columna ([1 3]..[2 1]..): ");
             if (!readMove(&r,&c)) { puts("Entrada invalida."); pauseEnter(); continue; }
             if (!isValidCell(r,c)) { puts("Fuera de rango."); pauseEnter(); continue; }

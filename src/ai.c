@@ -14,8 +14,7 @@
  * 3. Tomar el centro (takeCenter).
  * 4. Tomar una esquina (takeFirst).
  * 5. Tomar un lateral (takeFirst).
- * - Esta estrategia es suficiente para ser "imbatible" (nunca pierde,
- * puede empatar o ganar).
+ * - Esta estrategia es suficiente para ser "imbatible" (nunca pierde, puede empatar o ganar).
  *
  * Posibles bugs:
  * - La estrategia de bloqueo itera por todo el tablero (9 celdas) para

@@ -5,7 +5,7 @@
 
 ## PARTE I - MAPA DE NAVEGACIÓN
 
-> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7
+> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7 **Sería muy útil si me apoya con eso**
 
 ### Mapa de navegación (alto nivel)
 
@@ -27,7 +27,7 @@
 
 ```
 +--------------------------------------------------+
-|                 TIC-TAC-TOE (Gato)               |
+|                   (Gato)                         |
 +--------------------------------------------------+
 | 1) Jugar                                         |
 | 2) Tabla de posiciones                           |
@@ -39,39 +39,38 @@ Seleccione una opción: _
 
 ### Pantalla: Selección de modo de juego
 ```
-+-------------------- MODO DE JUEGO ----------------+
-| a) Jugador vs Jugador                             |
-| b) Jugador vs PC                                  |
-| c) Volver                                         |
-+---------------------------------------------------+
-Opción: _
+[1] Seleccione modo:
+a) Jugador vs Jugador
+b) Jugador vs PC
+c) Volver
+Opcion: _
 ```
 
 ### Pantalla: Captura de nombres
+Se muestra al inicio de ``playPVP`` o ``playPVC``
 ```
-+-------------------- NOMBRES -----------------------+
-| Ingrese nombre del Jugador 1 (X): ____________     |
-| Ingrese nombre del Jugador 2 (O) / PC: ________    |
-| (Dejar vacío para 'PC' si aplica)                  |
-+----------------------------------------------------+
+Nombre Jugador 1: ____________
+Nombre Jugador 2: ____________ // Solo aplica en playPVP
 ```
 
 ### Pantalla: Tablero 3x3
 ```
     Col: 1   2   3
 Fil       |   |   
- 1     1,1|1,2|1,3
+ 1        |   |
        ---+---+---
- 2     2,1|2,2|2,3
+ 2        |   |
        ---+---+---
- 3     3,1|3,2|3,3
+ 3        |   |
 
 Turno: <Nombre> (<X/O>)
-Ingrese fila y columna (p.ej., 2 3) o 'q' para salir: _
+Ingrese fila y columna ([1 3]..[2 1]..): _
 ```
 
 #### Mensajes de validación (ejemplos)
-- **Movimiento inválido**: casilla ocupada o fuera de rango (1-3).
+- **Entrada inválida**: si no son números.
+- **Fuera de rango**: si no es 1, 2 o 3.
+- **Casilla ocupada**: si la celda ya tiene 'X' o 'O'.
 - **Turno**: alterna automáticamente.
 - **Victoria**: muestra línea ganadora (h, v, d) y nombre.
 - **Empate**: tablero lleno sin ganador.
@@ -84,21 +83,32 @@ Resultado: [Gana <Nombre> / Empate]
 
 ### Pantalla: Tabla de posiciones (Ranking)
 ```
-+------------------ RANKING (desc) ------------------+
-| # | Nombre        | G | E | P | Puntaje           |
-|---+---------------+---+---+---+-------------------|
-| 1 |               |   |   |   |                   |
-| 2 |               |   |   |   |                   |
-| 3 |               |   |   |   |                   |
-+---------------------------------------------------+
-(Ordenado por Puntaje desc). Enter para volver.
++----+------------------------------+---+---+---+--------+
+| #  | Jugadores                    | G | E | P | Puntaje|
++----+------------------------------+---+---+---+--------+
+| 1  | Humano1                      | 2 | 1 | 0 | 7      |
+| 2  | Humano2                      | 0 | 1 | 2 | 1      |
++----+------------------------------+---+---+---+--------+
+
++--------------------------------------------------------+
+| Estadisticas de la IA (PC)                             |
++------------------------------+---+---+---+-------------+
+| Jarvis (PC)                  | 2 | 0 | 0 | 6           |
++------------------------------+---+---+---+-------------+
+
+Presiona Enter para continuar...
 ```
 
 ### Pantalla: Ayuda / Instrucciones
-- Objetivo: alinear 3 símbolos iguales (X u O) en línea.
-- Entrada: coordenadas **fila columna** (1..3 1..3).
-- Puntuación sugerida: **G=3, E=1, P=0** (configurable).
-- Persistencia: se guarda archivo `ranking.csv` al final de cada partida.
+[AYUDA]
+- **Objetivo**: Alinear 3 simbolos iguales (X u O).
+- **Entrada**:  Coordenadas fila columna ('1 3'..'1 4'..).
+- **Puntaje sugerido**:
+  G=3, E=1, P=0.
+
+Se guarda el Score del usuario en el Ranking.
+
+Presiona Enter para continuar...
 
 ---
 #### Notas de accesibilidad (terminal)
@@ -111,69 +121,59 @@ Resultado: [Gana <Nombre> / Empate]
 
 ```
 [INICIO]
-   |
-   v
-[MENU PRINCIPAL]
-   |--(1) Jugar -----------------------------.
-   |                                         |
-   |                                         v
-   |                            [Seleccionar modo]
-   |                               |        |
-   |                               |        +--(b) Jugador vs PC
-   |                               |                    |
-   |                               v                    v
-   |                      (a) Jugador vs Jugador   [Captura nombres]
-   |                               |                    |
-   |                               v                    v
-   |                          [Captura nombres]   [Init tablero]
-   |                               |                    |
-   |                               v                    v
-   |                          [Init tablero]      [Bucle de turnos]
-   |                               |                    |
-   |                               v                    v
-   |                          [Bucle de turnos] --> [Leer/validar jugada]
-   |                               |                    |
-   |                               v                    v
-   |                         [Check win/empate] <--------
-   |                               |
-   |             .------------------+------------------.
-   |             |                                     |
-   |             v                                     v
-   |       [Victoria]                           [Empate]
-   |             \___________________________ ________/
-   |                                         V
-   |                                  [Calcular puntaje]
-   |                                         |
-   |                                         v
-   |                               [Guardar en archivo]
-   |                                         |
-   |                                         v
-   |                                  [Mostrar ranking]
-   |                                         |
-   |                                         v
-   |                               [¿Jugar de nuevo?]
-   |                                   |        |
-   |                                   |s/n     | n
-   |                                   v        v
-   |                            [Reiniciar]  [VOLVER]
-   |
-   +--(2) Tabla de posiciones --> [Mostrar ranking] --> [VOLVER]
-   |
-   +--(3) Ayuda/Instrucciones  --> [Mostrar ayuda]   --> [VOLVER]
-   |
-   +--(4) Salir  ----------------------------------------> [FIN]
+   |
+   v
+[MENU PRINCIPAL] (mainMenuLoop)
+   |--(1) Jugar -----------------------------.
+   |                                         |
+   |                                         v
+   |                            [Seleccionar modo] (a/b/c)
+   |                               |        |
+   |                               |        +--(b) playPVC()
+   |                         _     |                    |
+   |                               v                    v
+   |                      (a) playPVP()        [askHumanName]
+   |                               |                    |
+   |                               v                    v
+   |                          [askPlayerNames]   [Init tablero]
+   |                               |                    |
+   |                               v                    v
+   |                          [Init tablero]      [Bucle de turnos]
+   |                               |                    |
+   |                               v                    v
+   |                          [Bucle de turnos] --> [Leer/validar jugada]
+   |       _                       |               (o) [pcMove]
+   |                               v                    |
+   |                         [Check win/empate] <--------
+   |             ------------------+------------------.
+   |             |                                     |
+   |             v                                     v
+   |       [Victoria]                           [Empate]
+   |             \___________________________________/
+   |                                          v
+   |                                  [Calcular puntaje]
+   |     _                                    |
+   |                                         v
+   |                               [Guardar en (upsertResult)]
+   |                                         |
+   |                                         v
+   |                                  [¿Jugar de nuevo? (s/n)]
+   |                                     |        |
+   |<-(s)--------------------------------'        | (n)
+   |                                              v
+   '------------------------------------------[VOLVER al Menú]
+   |
+   +--(2) Tabla de posiciones --> [loadRanking] -> [sortRankingDesc] -> [showRanking] -> [VOLVER]
+   |
+   +--(3) Ayuda/Instrucciones  --> [showHelp]   --> [VOLVER]
+   |
+   +--(4) Salir  ----------------------------------------> [FIN]
 ```
-
-Notas:
-- Persistencia en CSV al terminar cada partida: nombre, G/E/P, puntaje.
-- Ranking ordenado por puntaje (descendente).
-- Validaciones: entrada (1..3), casilla libre, opción de menú correcta.
-
 ---
 # PARTE III — Diseño técnico (C)
 
 > **Suposiciones de entorno**  
-> - Compilador: `gcc`/`clang` (C11/C17).  
+> - Compilador: gcc (C11/C17).  
 > - Arquitectura x64 típica: `char`=1 B, `int`=4 B, `double`=8 B, puntero=8 B.  
 > - Interfaz: consola/terminal.  
 > - Paradigma: **estructurado** y **modular** (multiarchivo).  
@@ -369,16 +369,19 @@ int rankingCount;
 #ifndef GAME_H
 #define GAME_H
 
+// Nombre de la IA
+#define AI_PLAYER_NAME "Jarvis (PC)"
+
 void initBoard(char board[3][3]);
-int  isValidCell(int r, int c);
-int  isCellEmpty(const char board[3][3], int r, int c);
-int  applyMove(char board[3][3], int r, int c, char sym);
-int  checkWin(const char board[3][3], char sym);
-int  boardFull(const char board[3][3]);
-int  readMove(int *r, int *c);
-int  scoreOf(int wins, int draws, int losses);
-void playPVP(char name1[], char name2[]);
-void playPVC(char name1[]);
+int ADC isValidCell(int r, int c);
+int  isCellEmpty(const char board[3][3], int r, int c);
+int  applyMove(char board[3][3], int r, int c, char sym);
+int  checkWin(const char board[3][3], char sym);
+int  boardFull(const char board[3][3]);
+int  readMove(int *r, int *c);
+int  scoreOf(int wins, int draws, int losses);
+void playPVP(void);
+void playPVC(void)
 
 #endif
 ```

@@ -27,12 +27,9 @@
 
 // Librerias del juego
 #include "io.h"
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include "game.h"
 
 // Librerias del Lenguaje
-#include "io.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -139,12 +136,49 @@ void sortRankingDesc(PlayerRecord arr[], int n) {
 
 // Muestra el ranking formateado en la consola.
 void showRanking(const PlayerRecord arr[], int n) {
+    
+    // Puntero para guardar el registro de la PC si lo encontramos
+    const PlayerRecord* pcRecord = NULL; 
+    
+    // Contador separado para el ranking de jugadores (para que no se salte números)
+    int rankCounter = 1; 
+
+    // --- 1. Imprimir la tabla de Jugadores Humanos ---
     puts("+----+------------------------------+---+---+---+--------+");
-    puts("| #  | Nombre                       | G | E | P | Puntaje|");
+    puts("| #  | Jugadores                    | G | E | P | Puntaje|");
     puts("+----+------------------------------+---+---+---+--------+");
+    
     for (int i = 0; i < n; ++i) {
-        printf("| %-2d | %-28s | %-1d | %-1d | %-1d | %-6d|\n",
-            i+1, arr[i].name, arr[i].wins, arr[i].draws, arr[i].losses, arr[i].score);
+        
+        // Comparamos el nombre. strcmp() devuelve 0 si son idénticos.
+        if (strcmp(arr[i].name, AI_PLAYER_NAME) == 0) {
+            // Si encontramos a la PC, guardamos sus datos
+            pcRecord = &arr[i];
+            // Y nos saltamos la impresión en esta tabla
+            continue; 
+        }
+        
+        // Si no es la PC, es un jugador. Lo imprimimos.
+        printf("| %-2d | %-28s | %-1d | %-1d | %-1d | %-6d |\n",
+            rankCounter, // Usamos el contador de ranking separado
+            arr[i].name, arr[i].wins, arr[i].draws, arr[i].losses, arr[i].score);
+        
+        // Incrementamos el ranking solo si imprimimos un jugador
+        rankCounter++;
     }
+    
     puts("+----+------------------------------+---+---+---+--------+");
+
+    
+    // --- 2. Imprimir la tabla de la IA (si se encontró) ---
+    if (pcRecord != NULL) {
+        puts("\n+--------------------------------------------------------+");
+        puts("| Estadisticas de la IA (PC)                             |");
+        puts("+----+------------------------------+---+---+---+--------+");
+        // Nota: No usamos 'rankCounter' aquí, solo mostramos sus stats
+        printf("     | %-28s | %-1d | %-1d | %-1d | %-6d |\n",
+               pcRecord->name, pcRecord->wins, pcRecord->draws, 
+               pcRecord->losses, pcRecord->score);
+        puts("+----+------------------------------+---+---+---+--------+");
+    }
 }
