@@ -4,7 +4,7 @@
  * Responsabilidades:
  * - Implementar el bucle principal del menú de la aplicación (mainMenuLoop).
  * - Gestionar la navegación del usuario entre las diferentes pantallas
- * (Jugar, Ranking, Ayuda, Salir).
+ *   (Jugar, Ranking, Ayuda, Salir).
  * - Solicitar al usuario la selección del modo de juego (JvJ o JvPC).
  * - Invocar las funciones correspondientes de otros módulos (playPVP,
  * playPVC, loadRanking, showRanking, showHelp).
@@ -24,10 +24,11 @@
  */
 
  // Librerias del Juego
-#include "app.h"
-#include "ui.h"
-#include "game.h"
-#include "io.h"
+#include "app.h"    // Prototipos de funciones
+#include "ui.h"     // Para clearScreen(), showMainMenu(), pauseEnter()
+#include "game.h"   // Para playPVP(), playPVC()
+#include "io.h"     // Para loadRanking(), sortRankingDesc(), showRanking()
+#include "utils.h"  // Para readIn()
 
 // Librerias del Lenguaje
 #include <stdio.h>
@@ -40,17 +41,18 @@ int mainMenuLoop(void) {
         clearScreen();
         showMainMenu();
         int option = 0;
-        
-        // Leer la opción numérica del menú
-        if (scanf("%d", &option) != 1) {
-            // Error de entrada: limpiar el búfer
-            int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
-            puts("\nEntrada invalida.");
+        char tempBuffer[100];
+
+        if (!readIn(tempBuffer, sizeof(tempBuffer))) {
+            running = 0; // EOF o error, salir
+            continue;
+        }
+
+        if (sscanf(tempBuffer, "%d",&option) != 1) {
+            puts("\nEntrada Invalida");
             pauseEnter();
             continue;
         }
-        // Limpiar el búfer de entrada (el '\n' restante)
-        int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
 
         switch (option) {
         case 1: /* Jugar */
@@ -60,9 +62,13 @@ int mainMenuLoop(void) {
             puts("b) Jugador vs PC");
             puts("c) Volver");
             printf("Opcion: ");
-            char m = getchar(); // Leer la opción del submenú
-            // Limpiar el búfer de entrada
-            while ((ch = getchar()) != '\n' && ch != EOF) {}
+
+            // Leer la opción del submenú
+            char m = '\0';
+            readIn(tempBuffer, sizeof(tempBuffer));
+            if (strlen(tempBuffer) > 0) {
+                m = tempBuffer[0];
+            }
             
             if (m == 'a' || m == 'A') {
                 playPVP(); // Iniciar modo JvJ

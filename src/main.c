@@ -10,9 +10,6 @@
  * - Mantiene el 'main' limpio y simple.
  * - No contiene ninguna lógica de juego o de menú; solo el arranque.
  * - 'main.c' solo debe incluir 'app.h'.
- *
- * Posibles bugs:
- * - Ninguno, dada su extrema simplicidad.
  */
 
  // El juego.

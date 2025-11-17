@@ -12,13 +12,11 @@
  * - 'clearScreen' es una implementación portable (imprime líneas nuevas)
  * para evitar 'system("clear")' o 'system("cls")'.
  *
- * Posibles bugs:
- * - 'pauseEnter' usa 'getchar' y asume que el búfer está limpio,
- * excepto por un '\n' previo. Si el búfer contiene más caracteres,
- * podría no pausar o pausar varias veces.
  */
 
-#include "ui.h"
+#include "ui.h"    // Prototipos de funciones y definiciones
+#include "utils.h" // Para readIn()
+
 #include <stdio.h>
 
 // "Limpia" la pantalla imprimiendo varias líneas nuevas.
@@ -52,9 +50,8 @@ void showHelp(void) {
 // Pausa la ejecución hasta que el usuario presione Enter.
 void pauseEnter(void) {
     puts("\nPresiona Enter para continuar...");
-    int c;
-    // Limpiar buffer
-    while ((c = getchar()) != '\n' && c != EOF) {}
+    char tempBuffer[2];
+    readIn(tempBuffer, sizeof(tempBuffer));
 }
 
 // Dibuja el estado actual del tablero en la consola.
@@ -63,17 +60,17 @@ void printBoard(const char board[3][3]) {
     puts("  Col:  1   2   3");
     puts("Fil");
     printf(" 1      %c | %c | %c \n",
-        board[0][0] ? board[0][0] : ' ',
-        board[0][1] ? board[0][1] : ' ',
-        board[0][2] ? board[0][2] : ' ');
+        board[0][0] ? board[0][0] : ' ',    // Si es '\0', imprime espacio
+        board[0][1] ? board[0][1] : ' ',    // en lugar de '\0'
+        board[0][2] ? board[0][2] : ' ');   // para mejor visualización
     puts("       ---+---+---");
     printf(" 2      %c | %c | %c \n",
-        board[1][0] ? board[1][0] : ' ',
+        board[1][0] ? board[1][0] : ' ',    // Igual que arriba
         board[1][1] ? board[1][1] : ' ',
         board[1][2] ? board[1][2] : ' ');
     puts("       ---+---+---");
     printf(" 3      %c | %c | %c \n",
-        board[2][0] ? board[2][0] : ' ',
+        board[2][0] ? board[2][0] : ' ',    // Igual que arriba
         board[2][1] ? board[2][1] : ' ',
         board[2][2] ? board[2][2] : ' ');
 }

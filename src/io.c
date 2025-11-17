@@ -21,13 +21,12 @@
  * - 'loadRanking' tiene un límite estático (p.ej. 2000) de registros.
  * Si el CSV crece más, truncará la carga.
  * 
- * - La lectura de CSV con 'fscanf' es frágil. Si un nombre de jugador
- * contuviera una coma, rompería el formato.
  */
 
 // Librerias del juego
-#include "io.h"
-#include "game.h"
+#include "io.h"     // Prototipos de funciones y definiciones
+#include "game.h"   // Para scoreOf()
+#include "ai.h"     // Para AI_PLAYER_NAME
 
 // Librerias del Lenguaje
 #include <stdio.h>
@@ -56,7 +55,7 @@ int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
                    pr.name, &pr.wins, &pr.draws, &pr.losses, &pr.score) == 5) {
             arr[n++] = pr;
         } else {
-            // Si una linea no contiene valores o hay error, se saltea.
+            // Si una linea no contiene valores o hay error (,), se saltea.
             int ch; while ((ch = fgetc(f)) != '\n' && ch != EOF) {}
         }
     }

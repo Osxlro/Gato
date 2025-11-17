@@ -1,11 +1,10 @@
 /*
- * Nombre del archivo: ai.c
+ * ai.c
  *
  * Responsabilidades:
- * - Implementar la lógica de la Inteligencia Artificial (IA) para el modo JvPC.
+ * - Lógica de la Inteligencia Artificial (IA) para PVC (Jugador vs Computadora).
  * - Proveer la función principal 'pcMove' que decide el siguiente movimiento.
- * - Contener funciones 'helper' (estáticas) que implementan la estrategia
- * de la IA (tryWin, takeCenter, takeFirst).
+ * - Contener funciones auxiliares para sus estrategias de la IA (tryWin, takeCenter, takeFirst).
  *
  * Notas:
  * - La IA sigue una estrategia simple:
@@ -17,9 +16,7 @@
  * - Esta estrategia es suficiente para ser "imbatible" (nunca pierde, puede empatar o ganar).
  *
  * Posibles bugs:
- * - La estrategia de bloqueo itera por todo el tablero (9 celdas) para
- * probar la victoria del humano. Aunque 9 es trivial, esta
- * implementación es O(N^2) en lugar de O(N) (donde N=9).
+ * - Mira la linea 77 (pcMove) para un posible problema de eficiencia en tableros más grandes.
  */
 
  // Librerias del Juego
@@ -29,7 +26,7 @@
 
 /* Funciones de IA */
 
-// Busca una jugada ganadora inmediata para 'sym' y la aplica si la encuentra.
+// Busca una jugada ganadora inmediata para 'simbolo (sym)' y la aplica si la encuentra.
 // Devuelve 1 si encontró y aplicó la jugada, 0 si no.
 static int tryWin(char board[3][3], char sym) {
     // Coloca sym en alguna celda vacía que produzca victoria inmediata.
@@ -38,7 +35,7 @@ static int tryWin(char board[3][3], char sym) {
             if (board[r][c] == ' ') {
                 board[r][c] = sym; // Probar jugada
                 int win = checkWin(board, sym);
-                if (win) return 1;     // ¡Victoria! Dejamos la jugada puesta.
+                if (win) return 1;     // Victoria, Dejamos la jugada puesta.
                 board[r][c] = ' ';     // Revertimos la jugada si no era ganadora.
             }
         }
@@ -77,7 +74,9 @@ void pcMove(char board[3][3], char pcSym, char humanSym) {
     if (tryWin(board, pcSym)) return;
 
     // 2) Bloquear victoria del Jugador
-        //Coloca temporalmente la jugada del humano; si gana, la bloquea poniendo pcSym
+    // Nota: Este doble bucle es O(N^2) para un tablero de N x N (aquí N=3), lo cual es aceptable para el juego,
+    // pero podría ser ineficiente en tableros más grandes.
+    //Coloca temporalmente la jugada del Jugador; si gana, la bloquea poniendo pcSym
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
             if (board[r][c] == ' ') {
@@ -103,7 +102,7 @@ void pcMove(char board[3][3], char pcSym, char humanSym) {
     static const int sides[4][2]   = { {0,1},{1,0},{1,2},{2,1} };
     if (takeFirst(board, pcSym, sides, 4)) return;
 
-    // 6) Fallback: tomar la primera libre (no debería ser necesario si la lógica anterior cubre todos los casos).
+    // 6) Tomar la primera libre (no debería ser necesario si la lógica anterior cubre todos los casos).
     for (int r = 0; r < 3; ++r)
         for (int c = 0; c < 3; ++c)
             if (board[r][c] == ' ') { board[r][c] = pcSym; return; }

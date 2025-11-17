@@ -1,9 +1,6 @@
 #ifndef GAME_H
 #define GAME_H
 
-// Nombre de la IA
-#define AI_PLAYER_NAME "Jarvis (PC)"
-
 // --- Lógica del Tablero ---
 
 // Verifica si la celda (r, c) está en el rango [1, 3].
@@ -22,6 +19,11 @@ int  boardFull(const char board[3][3]);
 // --- Entrada y Puntuación ---
 
 // Lee la entrada del usuario (fila, columna) desde la consola.
+ /*
+ * 1: Éxito (se leyeron dos números).
+ * 0: Formato inválido (ej. "a", "1", "1 2 3").
+ * -1: El usuario introdujo 'q' para abandonar.
+ */
 int  readMove(int *r, int *c);
 // Calcula el puntaje (Victoria=3, Empate=1, Derrota=0).
 int  scoreOf(int wins, int draws, int losses);

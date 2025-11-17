@@ -13,68 +13,58 @@
  * - Contener funciones auxiliares para la lógica del juego (scoreOf).
  *
  * Notas:
- * - Este archivo es el "motor" central del juego.
- * - Depende de 'ui.h' para la interfaz (clearScreen, printBoard).
- * - Depende de 'io.h' para guardar los puntajes en 'ranking.csv'.
- * - Depende de 'ai.h' para obtener el movimiento de la IA en el modo PVC.
+ * - Este es el "motor" central del juego.
  * - El estado del juego (tablero, nombres) se maneja como variables locales
  * dentro de las funciones de bucle de juego, no hay variables globales.
  *
  * Posibles bugs:
- * - La función 'readMove' usa 'scanf' y una limpieza de búfer simple. Si un
- * usuario ingresa "1 dos" o "1a", 'scanf' podría leer el '1' y dejar
- * " dos\n" en el búfer, causando fallos en lecturas subsecuentes.
- * 
- * - La función 'readLine' usa 'fgets', lo cual es seguro contra desbordamiento.
- * Sin embargo, si la entrada excede 'max', los caracteres restantes
- * quedarán en el búfer 'stdin' y podrían ser leídos por la siguiente
- * función de entrada (ej. 'getchar' para "jugar de nuevo"),
- * desincronizando el flujo.
+ * - Sin bugs conocidos.
  */
 
 // Librerias del juego
-#include "game.h"
-#include "ui.h"
-#include "io.h"
-#include "ai.h"
+#include "game.h"  // Prototipos de funciones y definiciones
+#include "ui.h"    // Para clearScreen()
+#include "io.h"    // Para upsertResult()
+#include "ai.h"    // Para AI_PLAYER_NAME
+#include "utils.h" // Para readIn()
 
 // Librerias por el Lenguaje
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 
 #ifndef NAME_MAX
 #define NAME_MAX 32
 #endif
 
-// Lee una línea de texto de forma segura desde stdin, evitando desbordamientos.
-static void readLine(char *buf, int max) {
-    if (!fgets(buf, max, stdin)) { buf[0] = '\0'; return; }
-    size_t len = strlen(buf);
-    if (len && buf[len-1] == '\n') buf[len-1] = '\0';
-}
-
-// Solicita los nombres para Jugador 1 y Jugador 2.
-void askPlayerNames(char p1[], char p2[], int maxLen) {
+/* Funciones básicas (Solicitar Nombres) (Semilla de Aleatoriedad) */
+// Solicitar nombres.
+void askPlayerNames(char p1[], char p2[], int maxLen) { // PVP - Jugador vs Jugador
     clearScreen();
+
     printf("Nombre Jugador 1: ");
-    readLine(p1, maxLen);
+    readIn(p1, maxLen);
+    sanitizeString(p1);
     if (p1[0] == '\0') strncpy(p1, "Jugador1", maxLen);
 
     printf("Nombre Jugador 2: ");
-    readLine(p2, maxLen);
+    readIn(p2, maxLen);
+    sanitizeString(p2);
     if (p2[0] == '\0') strncpy(p2, "Jugador2", maxLen);
 }
-// Solicita el nombre del jugador humano para el modo JvPC.
-void askHumanName(char p1[], int maxLen) {
+
+void askHumanName(char p1[], int maxLen) {              // PVC - Jugador vs PC  
     clearScreen();
+
     printf("Tu nombre: ");
-    readLine(p1, maxLen);
+    readIn(p1, maxLen);
+    sanitizeString(p1);
     if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
 }
 
-// Inicializa la semilla del generador de números aleatorios si no se ha hecho.
+// Semilla para aleatoriedad (inicializar solo una vez)
 static int seeded = 0;
 static void ensureSeed(void) {
     if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
@@ -100,7 +90,7 @@ void playPVP(void) {
     int draws[2] = {0,0};
     int losses[2]= {0,0};
 
-    for (;;) {
+    for (;;) { // Bucle infinito hasta que alguien gane o empate.
         clearScreen();
         printf("Modo: Jugador vs Jugador\n");
         printf("Inicia: %s \n", starter==0 ? name1 : name2);
@@ -109,14 +99,40 @@ void playPVP(void) {
                (current==starter) ? 'X' : 'O');
         printBoard(board);
 
-        printf("Ingresa fila y columna ([1 3]..[2 1]..): ");
-        if (!readMove(&r, &c)) { puts("Entrada invalida."); pauseEnter(); continue; }
+        printf("Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
+        
+        // Lee el movimiento (0 = error, -1 = salir, 1 = éxito)
+        int moveResult = readMove(&r,&c);
+        if (moveResult == 0) {          // Error
+            puts("Entrada Invalida.");
+            pauseEnter();
+            continue;
+
+        } else if (moveResult == -1) {  // Usuario quiere salir
+            clearScreen();
+            printBoard(board);
+
+            const char* quitterName = (current == 0) ? name1 : name2;
+            const char* winnerName = (current == 0) ? name2 : name1;
+            char sym = (current==starter) ? 'X' : 'O';
+
+            printf("\n%s (%c) ha abandonado la partida.\n", quitterName, sym);
+            printf("Gana %s!\n", winnerName);
+
+            wins[1-current]++; // El oponente gana
+            losses[current]++; // El jugador actual pierde
+            break; // Salir del bucle for(;;)
+
+        }
+        
+        // Validar movimiento
         if (!isValidCell(r, c)) { puts("Fuera de rango."); pauseEnter(); continue; }
         if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
 
         char sym = (current==starter) ? 'X' : 'O';
         applyMove(board, r, c, sym);
 
+        // Verificar Victoria o Empate
         if (checkWin(board, sym)) {
             clearScreen(); printBoard(board);
             printf("\nGana %s (%c)\n", current==0 ? name1 : name2, sym);
@@ -145,7 +161,6 @@ void playPVP(void) {
     if (ch=='s'||ch=='S') playPVP();
 }
 
-
 /* ---------- JvPC con inicio aleatorio ---------- */
 extern void pcMove(char board[3][3], char pcSym, char humanSym);
 void playPVC(void) {
@@ -163,7 +178,7 @@ void playPVC(void) {
     int winsPC=0, drawsPC=0, lossesPC=0;
 
     int r,c;
-    for (;;) {
+    for (;;) { // Bucle infinito hasta que alguien gane o empate.
         clearScreen();
         printf("Modo: Jugador vs PC\n");
         printf("Inicia: %s \n", starter==0 ? human : pcName);
@@ -172,8 +187,23 @@ void playPVC(void) {
         printBoard(board);
 
         if (current == 0) { /* Jugador */
-            printf("Ingresa fila y columna ([1 3]..[2 1]..): ");
-            if (!readMove(&r,&c)) { puts("Entrada invalida."); pauseEnter(); continue; }
+            printf("Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
+
+            // Lee el movimiento (0 = error, -1 = salir, 1 = éxito)
+            int moveResult = readMove(&r,&c);
+            if (moveResult == 0) { puts("Entrada invalida."); pauseEnter(); continue; }
+            if (moveResult == -1) { 
+                clearScreen();
+                printBoard(board);
+                printf("\n%s (%c) ha abandonado la partida.\n",
+                       human,
+                       (current==starter) ? 'X' : 'O');
+                printf("Gana %s!\n", pcName);
+                winsPC++; lossesH++;
+                break;
+             }
+
+            // Validar movimiento
             if (!isValidCell(r,c)) { puts("Fuera de rango."); pauseEnter(); continue; }
             if (!isCellEmpty(board,r,c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
             char sym = (starter==0) ? 'X' : 'O';
@@ -213,6 +243,10 @@ void playPVC(void) {
     int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
     if (ch=='s'||ch=='S') playPVC();
 }
+
+ /* Funciones de Verificación
+ * (Verificar Celdas, Aplicar Movimiento, Verificar Victoria, Tablero Lleno,)
+ */
 
 // Verifica si las coordenadas (r, c) están dentro del rango 1-3.
 int isValidCell(int r, int c) {
@@ -263,11 +297,24 @@ int boardFull(const char board[3][3]) {
 
 // Lee la entrada del usuario para fila y columna (ej: "1 2") y limpia el búfer.
 int readMove(int *r, int *c) {
-    // lee dos enteros; simple, robusteceremos con limpieza de buffer
-    int read = scanf("%d %d", r, c);
-    int ch;
-    while ((ch = getchar()) != '\n' && ch != EOF) {} // limpia hasta fin de línea
-    return (read == 2);
+    char tempBuffer[100];
+
+    // 1. Leer la linea completa.
+    if(!readIn(tempBuffer, sizeof(tempBuffer))) {
+        return 0; // Error o EOF
+    }
+
+    // 2. Verificar si el usuario quiere salir ('q' o 'Q').
+    if ((tolower((unsigned char)tempBuffer[0]) == 'q') && tempBuffer[1] == '\0') {
+        return -1; // Devolvemos -1 como señal de "salir"
+    }
+    
+    // 2. Parsear datos desde el buffer.
+    if (sscanf(tempBuffer, "%d %d", r, c) != 2) {
+        return 0; // Fallo al parsear dos enteros
+    }
+
+    return 1; // Lectura exitosa
 }
 
 // Calcula el puntaje basado en victorias (3 pts) y empates (1 pto).
