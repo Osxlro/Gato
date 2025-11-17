@@ -100,6 +100,7 @@ Presiona Enter para continuar...
 ```
 
 ### Pantalla: Ayuda / Instrucciones
+```
 [AYUDA]
 - **Objetivo**: Alinear 3 simbolos iguales (X u O).
 - **Entrada**:  Coordenadas fila columna ('1 3'..'1 4'..).
@@ -109,7 +110,7 @@ Presiona Enter para continuar...
 Se guarda el Score del usuario en el Ranking.
 
 Presiona Enter para continuar...
-
+```
 ---
 #### Notas de accesibilidad (terminal)
 - Contraste alto y etiquetas claras.
