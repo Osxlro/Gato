@@ -44,5 +44,6 @@ int  randomStarts(void);
 void playPVP(void);
 // Inicia el bucle de juego Jugador vs PC.
 void playPVC(void);
-
+// Inicia el bucle de juego Jugador vs Jugador Online.
+void playOnline(void);
 #endif

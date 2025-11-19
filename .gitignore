@@ -1,3 +1,7 @@
 Makefile
 gato.exe
 ranking.csv
+/vendor
+.gitignore
+/pruebas
+/.vscode

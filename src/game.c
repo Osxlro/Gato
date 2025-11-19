@@ -27,6 +27,7 @@
 #include "io.h"    // Para upsertResult()
 #include "ai.h"    // Para AI_PLAYER_NAME
 #include "utils.h" // Para readIn()
+#include "network.h" // Para funciones de red
 
 // Librerias por el Lenguaje
 #include <stdio.h>
@@ -242,6 +243,159 @@ void playPVC(void) {
     printf("\nJugar otra partida JvPC? (s/n): ");
     int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
     if (ch=='s'||ch=='S') playPVC();
+}
+
+/* ---------- JvJ Online ---------- */
+/* ---------- Juego Online (LAN) ---------- */
+
+void playOnline(void) {
+    if (!net_init()) {
+        puts("Error inicializando red.");
+        pauseEnter();
+        return;
+    }
+
+    clearScreen();
+    puts("=== MODO ONLINE (LAN) ===");
+    puts("1. Crear Partida (Ser Anfitrion/Host)");
+    puts("2. Unirse a Partida (Ser Invitado/Cliente)");
+    printf("Opcion: ");
+
+    char buffer[10];
+    readIn(buffer, sizeof(buffer));
+    int option = atoi(buffer);
+
+    int socket_fd = -1;
+    int amIHost = 0; // 1 si soy Host (X), 0 si soy Cliente (O)
+    int port = 8888; // Puerto fijo para simplificar
+
+    if (option == 1) {
+        // --- SOY HOST ---
+        amIHost = 1;
+        printf("\nIniciando servidor en puerto %d...\n", port);
+        printf("Comparte tu Direccion IP local con el otro jugador.\n");
+        
+        socket_fd = net_start_server(port);
+        if (socket_fd < 0) {
+            puts("Fallo al iniciar servidor.");
+            net_cleanup();
+            pauseEnter();
+            return;
+        }
+    } else if (option == 2) {
+        // --- SOY CLIENTE ---
+        amIHost = 0;
+        char ip[32];
+        printf("\nIngresa la IP del Host (ej. 192.168.1.5): ");
+        readIn(ip, sizeof(ip));
+        
+        socket_fd = net_connect_to_host(ip, port);
+        if (socket_fd < 0) {
+            puts("Fallo al conectar.");
+            net_cleanup();
+            pauseEnter();
+            return;
+        }
+    } else {
+        puts("Opcion invalida.");
+        net_cleanup();
+        pauseEnter();
+        return;
+    }
+
+    // --- INICIO DEL JUEGO ---
+    
+    // Configuración: Host siempre es 'X' y empieza. Cliente es 'O'.
+    char mySym    = amIHost ? 'X' : 'O';
+    char rivalSym = amIHost ? 'O' : 'X';
+    
+    // Nombres temporales para la UI
+    char myName[32] = "Yo";
+    char rivalName[32] = "Rival";
+
+    char board[3][3];
+    initBoard(board);
+
+    int current = 0; // 0 siempre es 'X' (Host), 1 siempre es 'O' (Cliente)
+    int r, c;
+
+    for (;;) {
+        clearScreen();
+        printf("Modo Online: %s (%c) vs %s (%c)\n", myName, mySym, rivalName, rivalSym);
+        printBoard(board);
+
+        // Determinar de quién es el turno
+        // Si (current == 0 y soy Host) O (current == 1 y soy Cliente) -> ES MI TURNO
+        int isMyTurn = (current == 0 && amIHost) || (current == 1 && !amIHost);
+
+        if (isMyTurn) {
+            printf("\n[TU TURNO] Ingresa fila y columna: ");
+            if (!readMove(&r, &c)) { 
+                // Si devuelve -1 (salir) o 0 (error grave), manejamos desconexión
+                puts("\nSaliendo de la partida...");
+                break; 
+            }
+            
+            // Validaciones locales
+            if (!isValidCell(r, c)) { puts("Fuera de rango."); pauseEnter(); continue; }
+            if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
+
+            // 1. Aplicar en mi tablero
+            applyMove(board, r, c, mySym);
+            
+            // 2. Enviar jugada al rival
+            if (!net_send_move(socket_fd, r, c)) {
+                puts("Error de conexion enviando jugada.");
+                break;
+            }
+
+            // Chequear si gané
+            if (checkWin(board, mySym)) {
+                clearScreen(); printBoard(board);
+                puts("\n¡GANASTE!");
+                // Aquí podrías llamar a upsertResult para guardar tu victoria en Firebase
+                break;
+            }
+
+        } else {
+            printf("\n[ESPERANDO AL RIVAL]...\n");
+            
+            // 1. Esperar y recibir jugada del rival
+            if (!net_receive_move(socket_fd, &r, &c)) {
+                puts("\nEl rival se ha desconectado.");
+                break;
+            }
+
+            // 2. Aplicar en mi tablero
+            applyMove(board, r, c, rivalSym);
+
+            // Chequear si perdí
+            if (checkWin(board, rivalSym)) {
+                clearScreen(); printBoard(board);
+                puts("\n¡PERDISTE! El rival ha ganado.");
+                // Aquí podrías guardar tu derrota
+                break;
+            }
+        }
+
+        if (boardFull(board)) {
+            clearScreen(); printBoard(board);
+            puts("\n¡EMPATE!");
+            break;
+        }
+        
+        // Cambio de turno
+        current = 1 - current;
+    }
+
+    // Cierre
+    puts("\nFin de la conexion.");
+    // En Windows, closesocket se llama en network.c si quisieras encapsularlo,
+    // o puedes usar closesocket(socket_fd) aquí si incluyes winsock, 
+    // pero lo ideal es que net_cleanup se encargue o añadas una función net_close(sock).
+    // Por simplicidad:
+    net_cleanup(); 
+    pauseEnter();
 }
 
  /* Funciones de Verificación

@@ -60,7 +60,8 @@ int mainMenuLoop(void) {
             puts("[1] Seleccione modo:");
             puts("a) Jugador vs Jugador");
             puts("b) Jugador vs PC");
-            puts("c) Volver");
+            puts("c) Jugador vs Jugador Online");
+            puts("d) Volver");
             printf("Opcion: ");
 
             // Leer la opción del submenú
@@ -74,9 +75,11 @@ int mainMenuLoop(void) {
                 playPVP(); // Iniciar modo JvJ
             } else if (m == 'b' || m == 'B') {
                 playPVC(); // Iniciar modo JvPC
-            } else if (m == 'c' || m == 'B') {
-                pauseEnter();
+            } else if (m == 'd' || m == 'D') {
+                pauseEnter(); 
                 break;
+            } else if (m == 'c' || m == 'C') {
+                playOnline(); // Iniciar modo JvJ Online
             } else {
                 puts("Opcion invalida.");
             }
