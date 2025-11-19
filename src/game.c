@@ -257,7 +257,7 @@ void playOnline(void) {
     }
 
     clearScreen();
-    puts("=== MODO ONLINE (LAN) ===");
+    puts("--- MODO ONLINE (LAN) ---");
     
     char myName[NAME_MAX];
     printf("Tu nombre para Online: ");
@@ -276,7 +276,7 @@ void playOnline(void) {
     while (socket_fd < 0) {
         clearScreen();
 
-        puts("=== MODO ONLINE (LAN) ===");
+        puts("--- MODO ONLINE (LAN) ---");
         printf("Jugador: %s\n", myName);
         puts("---------------------------");
         puts("1. Crear Partida   (Ser Host)");
@@ -382,7 +382,7 @@ void playOnline(void) {
             int isMyTurn = (current == 0 && amIHost) || (current == 1 && !amIHost);
 
             if (isMyTurn) {
-                printf("\n[TU TURNO] Ingresa fila y columna (o 'q' para rendirse): ");
+                printf("\n[TU TURNO] Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
                 int res = readMove(&r, &c);
 
                 if (res == -1) { // 'q' presionada
