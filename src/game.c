@@ -45,6 +45,7 @@
 void askPlayerNames(char p1[], char p2[], int maxLen) { // PVP - Jugador vs Jugador
     clearScreen();
 
+    puts("--- MODO JvJ ---");
     printf("Nombre Jugador 1: ");
     readIn(p1, maxLen);
     sanitizeString(p1);
@@ -59,6 +60,7 @@ void askPlayerNames(char p1[], char p2[], int maxLen) { // PVP - Jugador vs Juga
 void askHumanName(char p1[], int maxLen) {              // PVC - Jugador vs PC  
     clearScreen();
 
+    puts("--- MODO JvPC ---");
     printf("Tu nombre: ");
     readIn(p1, maxLen);
     sanitizeString(p1);
@@ -246,9 +248,8 @@ void playPVC(void) {
 }
 
 /* ---------- JvJ Online ---------- */
-/* ---------- Juego Online (LAN) ---------- */
-
 void playOnline(void) {
+    // 1. Inicializar Winsock
     if (!net_init()) {
         puts("Error inicializando red.");
         pauseEnter();
@@ -257,145 +258,204 @@ void playOnline(void) {
 
     clearScreen();
     puts("=== MODO ONLINE (LAN) ===");
-    puts("1. Crear Partida (Ser Anfitrion/Host)");
-    puts("2. Unirse a Partida (Ser Invitado/Cliente)");
-    printf("Opcion: ");
-
-    char buffer[10];
-    readIn(buffer, sizeof(buffer));
-    int option = atoi(buffer);
+    
+    // 2. Configurar Nombre Local
+    char myName[NAME_MAX];
+    printf("Tu nombre para Online: ");
+    readIn(myName, NAME_MAX);
+    sanitizeString(myName);
+    if (myName[0] == '\0') strcpy(myName, "Jugador");
 
     int socket_fd = -1;
-    int amIHost = 0; // 1 si soy Host (X), 0 si soy Cliente (O)
-    int port = 8888; // Puerto fijo para simplificar
+    int amIHost = 0; 
+    int port = 8888;
 
-    if (option == 1) {
-        // --- SOY HOST ---
-        amIHost = 1;
-        printf("\nIniciando servidor en puerto %d...\n", port);
-        printf("Comparte tu Direccion IP local con el otro jugador.\n");
-        
-        socket_fd = net_start_server(port);
-        if (socket_fd < 0) {
-            puts("Fallo al iniciar servidor.");
+    // 3. Bucle de Conexión
+    while (socket_fd < 0) {
+        clearScreen();
+        printf("Jugador: %s\n", myName);
+        puts("---------------------------");
+        puts("1. Crear Partida (Ser Host)");
+        puts("2. Buscar Partida (Auto-descubrimiento)");
+        puts("3. Conectar Manual (IP especifica)");
+        puts("4. Volver");
+        printf("Opcion: ");
+
+        char buffer[10];
+        readIn(buffer, sizeof(buffer));
+        int option = atoi(buffer);
+
+        if (option == 1) {
+            // --- HOST ---
+            amIHost = 1;
+            // Espera TCP y UDP simultáneamente
+            socket_fd = net_host_wait_for_client(port);
+            if (socket_fd < 0) {
+                puts("Tiempo de espera agotado o error del servidor.");
+                pauseEnter();
+            }
+        } else if (option == 2) {
+            // --- CLIENTE (AUTO) ---
+            amIHost = 0;
+            char ip[32];
+            // Busca por 30 segundos
+            if (net_discover_host(port, 30, ip)) {
+                socket_fd = net_connect_to_host(ip, port);
+            } else {
+                printf("\nNo se encontro Host en la red local.\n");
+                pauseEnter();
+            }
+        } else if (option == 3) {
+             // --- CLIENTE (MANUAL) ---
+             amIHost = 0;
+             char ip[32];
+             printf("\nIngresa la IP del Host: ");
+             readIn(ip, sizeof(ip));
+             socket_fd = net_connect_to_host(ip, port);
+        } else {
+            // Salir
             net_cleanup();
-            pauseEnter();
             return;
         }
-    } else if (option == 2) {
-        // --- SOY CLIENTE ---
-        amIHost = 0;
-        char ip[32];
-        printf("\nIngresa la IP del Host (ej. 192.168.1.5): ");
-        readIn(ip, sizeof(ip));
-        
-        socket_fd = net_connect_to_host(ip, port);
-        if (socket_fd < 0) {
-            puts("Fallo al conectar.");
-            net_cleanup();
-            pauseEnter();
-            return;
-        }
-    } else {
-        puts("Opcion invalida.");
+    }
+
+    // 4. Handshake (Intercambio de Nombres)
+    printf("\nConectado! Intercambiando datos...\n");
+    char rivalName[NAME_MAX];
+    
+    net_send_name(socket_fd, myName);
+    if (!net_receive_name(socket_fd, rivalName)) {
+        puts("Error de protocolo (handshake).");
+        net_close(socket_fd);
         net_cleanup();
         pauseEnter();
         return;
     }
+    if (rivalName[0] == '\0') strcpy(rivalName, "Rival");
 
-    // --- INICIO DEL JUEGO ---
-    
-    // Configuración: Host siempre es 'X' y empieza. Cliente es 'O'.
-    char mySym    = amIHost ? 'X' : 'O';
-    char rivalSym = amIHost ? 'O' : 'X';
-    
-    // Nombres temporales para la UI
-    char myName[32] = "Yo";
-    char rivalName[32] = "Rival";
-
-    char board[3][3];
-    initBoard(board);
-
-    int current = 0; // 0 siempre es 'X' (Host), 1 siempre es 'O' (Cliente)
-    int r, c;
-
-    for (;;) {
-        clearScreen();
-        printf("Modo Online: %s (%c) vs %s (%c)\n", myName, mySym, rivalName, rivalSym);
-        printBoard(board);
-
-        // Determinar de quién es el turno
-        // Si (current == 0 y soy Host) O (current == 1 y soy Cliente) -> ES MI TURNO
-        int isMyTurn = (current == 0 && amIHost) || (current == 1 && !amIHost);
-
-        if (isMyTurn) {
-            printf("\n[TU TURNO] Ingresa fila y columna: ");
-            if (!readMove(&r, &c)) { 
-                // Si devuelve -1 (salir) o 0 (error grave), manejamos desconexión
-                puts("\nSaliendo de la partida...");
-                break; 
-            }
-            
-            // Validaciones locales
-            if (!isValidCell(r, c)) { puts("Fuera de rango."); pauseEnter(); continue; }
-            if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
-
-            // 1. Aplicar en mi tablero
-            applyMove(board, r, c, mySym);
-            
-            // 2. Enviar jugada al rival
-            if (!net_send_move(socket_fd, r, c)) {
-                puts("Error de conexion enviando jugada.");
-                break;
-            }
-
-            // Chequear si gané
-            if (checkWin(board, mySym)) {
-                clearScreen(); printBoard(board);
-                puts("\n¡GANASTE!");
-                // Aquí podrías llamar a upsertResult para guardar tu victoria en Firebase
-                break;
-            }
-
-        } else {
-            printf("\n[ESPERANDO AL RIVAL]...\n");
-            
-            // 1. Esperar y recibir jugada del rival
-            if (!net_receive_move(socket_fd, &r, &c)) {
-                puts("\nEl rival se ha desconectado.");
-                break;
-            }
-
-            // 2. Aplicar en mi tablero
-            applyMove(board, r, c, rivalSym);
-
-            // Chequear si perdí
-            if (checkWin(board, rivalSym)) {
-                clearScreen(); printBoard(board);
-                puts("\n¡PERDISTE! El rival ha ganado.");
-                // Aquí podrías guardar tu derrota
-                break;
-            }
-        }
-
-        if (boardFull(board)) {
-            clearScreen(); printBoard(board);
-            puts("\n¡EMPATE!");
-            break;
-        }
+    // 5. Bucle de Partidas (Rematch Loop)
+    int playing = 1;
+    while (playing) {
+        char board[3][3];
+        initBoard(board);
         
-        // Cambio de turno
-        current = 1 - current;
+        // Configuración fija: Host=X, Cliente=O
+        char mySym    = amIHost ? 'X' : 'O';
+        char rivalSym = amIHost ? 'O' : 'X';
+        
+        // El Host (X) siempre inicia el turno
+        int current = 0; // 0=X, 1=O
+        int r, c;
+        int gameEnded = 0; // Bandera para saber si la partida terminó
+
+        // --- Bucle de Turnos ---
+        for (;;) {
+            clearScreen();
+            printf("Modo: Online\n");
+            printf("------------------------------\n");
+            printf(" TU:    %s (%c)\n", myName, mySym);
+            printf(" RIVAL: %s (%c)\n", rivalName, rivalSym);
+            printf("------------------------------\n");
+            printBoard(board);
+
+            // ¿Es mi turno?
+            int isMyTurn = (current == 0 && amIHost) || (current == 1 && !amIHost);
+
+            if (isMyTurn) {
+                printf("\n[TU TURNO] Ingresa fila y columna (o 'q' para rendirse): ");
+                int res = readMove(&r, &c);
+
+                if (res == -1) { // 'q' presionada
+                    net_send_move(socket_fd, -1, -1); // Avisar rendición
+                    printf("\nTe has rendido. Gana %s.\n", rivalName);
+                    // (Opcional: upsertResult para registrar derrota)
+                    gameEnded = 1;
+                    break;
+                }
+                
+                if (res == 0 || !isValidCell(r, c) || !isCellEmpty(board, r, c)) {
+                    puts("Movimiento invalido.");
+                    pauseEnter();
+                    continue;
+                }
+
+                // Aplicar y enviar
+                applyMove(board, r, c, mySym);
+                net_send_move(socket_fd, r, c);
+
+                if (checkWin(board, mySym)) {
+                    clearScreen(); printBoard(board);
+                    printf("\nFELICIDADES %s HAS GANADO.\n", myName);
+                    // (Opcional: upsertResult para registrar victoria)
+                    gameEnded = 1;
+                    break;
+                }
+
+            } else {
+                printf("\n[ESPERANDO A %s]...\n", rivalName);
+                
+                // Bloquea hasta recibir
+                if (!net_receive_move(socket_fd, &r, &c)) {
+                    puts("\nError: Se perdio la conexion con el rival.");
+                    playing = 0; // Salir del bucle principal
+                    gameEnded = 1; // Salir del bucle de juego
+                    break; 
+                }
+
+                // Chequear rendición del rival
+                if (r == -1) {
+                    printf("\n%s SE HA RENDIDO, GANASTE.\n", rivalName);
+                    // (Opcional: upsertResult para registrar victoria)
+                    gameEnded = 1;
+                    break;
+                }
+
+                applyMove(board, r, c, rivalSym);
+
+                if (checkWin(board, rivalSym)) {
+                    clearScreen(); printBoard(board);
+                    printf("\n%s te ha ganado. Suerte la proxima.\n", rivalName);
+                    // (Opcional: upsertResult para registrar derrota)
+                    gameEnded = 1;
+                    break;
+                }
+            }
+
+            if (boardFull(board)) {
+                clearScreen(); printBoard(board);
+                puts("\nEMPATE Partida reñida.");
+                gameEnded = 1;
+                break;
+            }
+
+            current = 1 - current; // Cambio de turno
+        }
+
+        // Si se perdió la conexión abruptamente, salimos
+        if (playing == 0) break;
+
+        // 6. Votación de Revancha
+        if (gameEnded) {
+            printf("\nJugar de nuevo contra %s? (s/n): ", rivalName);
+            char vote[10];
+            readIn(vote, sizeof(vote));
+            int my_vote = (vote[0] == 's' || vote[0] == 'S');
+
+            printf("Esperando respuesta de %s...\n", rivalName);
+            
+            if (net_negotiate_rematch(socket_fd, my_vote)) {
+                printf("Ambos aceptaron, Reiniciando...\n");
+                // El bucle 'while(playing)' continúa, se reinicia el tablero
+            } else {
+                printf("Uno de los jugadores decidio salir.\n");
+                playing = 0;
+            }
+        }
     }
 
-    // Cierre
-    puts("\nFin de la conexion.");
-    // En Windows, closesocket se llama en network.c si quisieras encapsularlo,
-    // o puedes usar closesocket(socket_fd) aquí si incluyes winsock, 
-    // pero lo ideal es que net_cleanup se encargue o añadas una función net_close(sock).
-    // Por simplicidad:
-    net_cleanup(); 
-    pauseEnter();
+    puts("\nCerrando conexion...");
+    net_close(socket_fd);
+    net_cleanup();
 }
 
  /* Funciones de Verificación
