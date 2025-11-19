@@ -87,7 +87,7 @@ int mainMenuLoop(void) {
             clearScreen();
             PlayerRecord recs[1000]; // Array para almacenar los registros
             // Cargar el ranking desde el archivo
-            int n = loadRanking(recs, 1000, "ranking.csv");
+            int n = loadRanking(recs, 1000);
             if (n < 0) {
                 puts("No hay Ranking.");
             } else {

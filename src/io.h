@@ -29,7 +29,7 @@ typedef struct {
 
 // Carga el contenido del archivo CSV (ranking) en un array de 'PlayerRecord'.
 // Devuelve el número de registros leídos (n) o -1 si hay error.
-int loadRanking(PlayerRecord arr[], int max, const char *filePath);
+int loadRanking(PlayerRecord arr[], int max);
 
 // Ordena un array de 'PlayerRecord' por puntaje (descendente)
 // y luego por nombre (ascendente) como desempate.
@@ -44,9 +44,5 @@ void showRanking(const PlayerRecord arr[], int n);
 // actualiza sus estadísticas (si existe) o lo añade (si es nuevo),
 // y luego guarda todo el ranking de nuevo en el archivo.
 int  upsertResult(const char *name, int wins, int draws, int losses, int score);
-
-// Sobrescribe (modo 'w') el archivo CSV con el contenido completo
-// de un array de 'PlayerRecord'. Usado internamente por 'upsertResult'.
-int  saveAllRanking(const PlayerRecord arr[], int n, const char *filePath);
 
 #endif

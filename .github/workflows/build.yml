@@ -30,7 +30,11 @@ jobs:
       - name: Compile
         shell: bash
         run: |
-          gcc src/*.c -o gato.exe -std=c11 -Wall -Wextra -O2 -static -s
+          gcc src/*.c -o gato.exe \
+            -Ivendor/curl/include/curl \
+            -Lvendor/curl/lib \
+            -lcurl \
+            -std=c11 -Wall -Wextra -O2 -static -s
 
       # 7. Paso 4: Subir el .exe a la Release
       # Esta acción toma el .exe y lo adjunta a la release que acabas de crear.

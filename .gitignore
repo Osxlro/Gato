@@ -1,3 +1,4 @@
-Makefile
-gato.exe
-ranking.csv
+*.exe
+*.csv
+/pruebas/
+/.vscode/
