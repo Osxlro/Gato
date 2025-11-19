@@ -318,8 +318,10 @@ void playOnline(void) {
                 char ip[32];
                 printf("\nIngresa la IP del Host: ");
                 readIn(ip, sizeof(ip));
-                socket_fd = net_connect_to_host(ip, port);
 
+                printf("Conectando a %s:%d...\n", ip, port);
+
+                socket_fd = net_connect_to_host(ip, port);
                 if (socket_fd < 0) {
                     // Registra error de parte de network y de aqui mostramos otro mensaje
                     puts("No se pudo conectar al Host.");
@@ -355,6 +357,8 @@ void playOnline(void) {
 
     // 5. Bucle de Partidas (Rematch Loop)
     int playing = 1;
+    int starter_offset = 0; // Alternar quien inicia cada partida
+
     while (playing) {
         char board[3][3];
         initBoard(board);
@@ -364,7 +368,7 @@ void playOnline(void) {
         char rivalSym = amIHost ? 'O' : 'X';
         
         // El Host (X) siempre inicia el turno
-        int current = 0; // 0=X, 1=O
+        int current = starter_offset; // 0=X, 1=O
         int r, c;
         int gameEnded = 0; // Bandera para saber si la partida terminó
 
@@ -465,6 +469,7 @@ void playOnline(void) {
             
             if (net_negotiate_rematch(socket_fd, my_vote)) {
                 printf("Ambos aceptaron, Reiniciando...\n");
+                starter_offset = 1 - starter_offset; // Alternar quien inicia
                 // El bucle 'while(playing)' continúa, se reinicia el tablero
             } else {
                 printf("Uno de los jugadores decidio salir.\n");

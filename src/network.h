@@ -7,6 +7,7 @@
 #define DISCOVERY_TIMEOUT   30          // Segundos de espera para buscar host
 #define DISCOVERY_MSG       "GATO_REQ"  // Mensaje de búsqueda
 #define DISCOVERY_ACK       "GATO_ACK"  // Mensaje de respuesta
+#define HOST_TIMEOUT        60
 
 // --- Descubrimiento Automático (LAN) ---
 

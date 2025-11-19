@@ -80,8 +80,6 @@ int net_start_server(int port) {
         closesocket(server_fd);
         return -1;
     }
-
-    printf("Esperando rival en el puerto %d...\n", port);
     
     // 5. Accept (Bloquea hasta que alguien se conecte)
     if ((client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len)) == INVALID_SOCKET) {
@@ -128,10 +126,14 @@ int net_connect_to_host(const char* ip, int port) {
     }
 
     printf("¡Conectado al Host!\n");
+
+    // MEJORA DE ROBUSTEZ: Timeout de recepción
+    DWORD timeout = 60000; // 60 segundos
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
     return sock;
 }
 
-// --- IMPLEMENTACIÓN DE DESCUBRIMIENTO ---
+/* --- IMPLEMENTACIÓN DE DESCUBRIMIENTO --- */
 
 // HOST: Escucha TCP y UDP al mismo tiempo
 int net_host_wait_for_client(int tcp_port) {
@@ -139,9 +141,11 @@ int net_host_wait_for_client(int tcp_port) {
     struct sockaddr_in server_addr, client_addr, udp_addr, sender_addr;
     int addr_len = sizeof(client_addr);
     int sender_len = sizeof(sender_addr);
-    fd_set readfds; // Conjunto de sockets a vigilar
+    fd_set readfds;
+    struct timeval tv; // Para no bloquear infinitamente
+    time_t start_time = time(NULL); // Tiempo de inicio
 
-    // 1. Configurar TCP (Igual que antes)
+    // 1. Configurar TCP
     if ((tcp_fd = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) return -1;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -149,53 +153,65 @@ int net_host_wait_for_client(int tcp_port) {
     if (bind(tcp_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) return -1;
     listen(tcp_fd, 1);
 
-    // 2. Configurar UDP (Para ser descubierto)
+    // 2. Configurar UDP
     if ((udp_fd = socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET) return -1;
     udp_addr.sin_family = AF_INET;
     udp_addr.sin_addr.s_addr = INADDR_ANY;
     udp_addr.sin_port = htons(DISCOVERY_PORT);
-    // Permitir reutilizar puerto por si acaso
     char reuse = 1;
     setsockopt(udp_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
     
     if (bind(udp_fd, (struct sockaddr *)&udp_addr, sizeof(udp_addr)) < 0) {
-        printf("Error bind UDP (puerto %d ocupado). El autodescubrimiento no funcionara.\n", DISCOVERY_PORT);
+        printf("Error bind UDP. Autodescubrimiento desactivado.\n");
     }
 
-    printf("Esperando rival (TCP %d) y escuchando busquedas (UDP %d)...\n", tcp_port, DISCOVERY_PORT);
+    printf("Esperando rival (Max %d s)...\n", HOST_TIMEOUT);
 
-    // 3. Bucle de espera (Multiplexación)
-    while (1) {
+    // 3. Bucle de espera
+    while (difftime(time(NULL), start_time) < HOST_TIMEOUT) { // 60 Segundos de Timeout GLOBAL
         FD_ZERO(&readfds);
         FD_SET(tcp_fd, &readfds);
         FD_SET(udp_fd, &readfds);
 
-        // Esperar a que pase algo en alguno de los dos sockets
-        if (select(0, &readfds, NULL, NULL, NULL) == SOCKET_ERROR) break;
+        // Timeout del select (1 segundo para revisar el bucle while)
+        tv.tv_sec = 1; 
+        tv.tv_usec = 0;
 
-        // CASO A: Alguien intenta conectarse por TCP (Juego)
+        int res = select(0, &readfds, NULL, NULL, &tv);
+
+        if (res == SOCKET_ERROR) break;
+        if (res == 0) continue; // Timeout de 1s, volvemos a verificar tiempo total
+
+        // CASO A: TCP (Conexión entrante)
         if (FD_ISSET(tcp_fd, &readfds)) {
             client_fd = accept(tcp_fd, (struct sockaddr *)&client_addr, &addr_len);
             printf("¡Rival conectado por TCP!\n");
-            closesocket(tcp_fd); // Ya no escuchamos más
-            closesocket(udp_fd); // Apagamos el beacon UDP
+            
+            // MEJORA DE ROBUSTEZ: Timeout de recepción (Si el rival se desconecta)
+            DWORD timeout = 60000; // 60 segundos sin recibir nada = desconexión
+            setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
+            closesocket(tcp_fd);
+            closesocket(udp_fd);
             return client_fd;
         }
 
-        // CASO B: Alguien pregunta "¿Hay host?" por UDP
+        // CASO B: UDP (Búsqueda)
         if (FD_ISSET(udp_fd, &readfds)) {
             char buf[32];
             int n = recvfrom(udp_fd, buf, sizeof(buf), 0, (struct sockaddr*)&sender_addr, &sender_len);
             if (n > 0) {
                 buf[n] = 0;
                 if (strstr(buf, DISCOVERY_MSG)) {
-                    // Responder al que preguntó: "Aquí estoy"
-                    printf("Recibida solicitud de descubrimiento de %s. Respondiendo...\n", inet_ntoa(sender_addr.sin_addr));
                     sendto(udp_fd, DISCOVERY_ACK, strlen(DISCOVERY_ACK), 0, (struct sockaddr*)&sender_addr, sender_len);
                 }
             }
         }
     }
+    
+    // Limpieza si se acaba el tiempo
+    closesocket(tcp_fd);
+    closesocket(udp_fd);
     return -1;
 }
 
