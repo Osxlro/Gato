@@ -45,6 +45,7 @@ int readIn(char *buffer, int size) {
 }
 
 void sanitizeString(char *str) {
+    // Elimina caracteres no alfanuméricos de la cadena.
     if (!str) return;
 
     char *write_ptr = str; // Puntero de escritura

@@ -259,24 +259,28 @@ void playOnline(void) {
     clearScreen();
     puts("=== MODO ONLINE (LAN) ===");
     
-    // 2. Configurar Nombre Local
     char myName[NAME_MAX];
     printf("Tu nombre para Online: ");
+
+    // 2. Leer Nombre del Jugador
     readIn(myName, NAME_MAX);
     sanitizeString(myName);
     if (myName[0] == '\0') strcpy(myName, "Jugador");
 
+    // Variables de conexión
     int socket_fd = -1;
     int amIHost = 0; 
-    int port = 8888;
+    int port = GAME_PORT;
 
     // 3. Bucle de Conexión
     while (socket_fd < 0) {
         clearScreen();
+
+        puts("=== MODO ONLINE (LAN) ===");
         printf("Jugador: %s\n", myName);
         puts("---------------------------");
-        puts("1. Crear Partida (Ser Host)");
-        puts("2. Buscar Partida (Auto-descubrimiento)");
+        puts("1. Crear Partida   (Ser Host)");
+        puts("2. Buscar Partida  (Auto-descubrimiento)");
         puts("3. Conectar Manual (IP especifica)");
         puts("4. Volver");
         printf("Opcion: ");
@@ -284,38 +288,54 @@ void playOnline(void) {
         char buffer[10];
         readIn(buffer, sizeof(buffer));
         int option = atoi(buffer);
-
-        if (option == 1) {
-            // --- HOST ---
+        
+        switch (option) {
+        case 1: /* HOST */
             amIHost = 1;
-            // Espera TCP y UDP simultáneamente
             socket_fd = net_host_wait_for_client(port);
             if (socket_fd < 0) {
                 puts("Tiempo de espera agotado o error del servidor.");
                 pauseEnter();
             }
-        } else if (option == 2) {
-            // --- CLIENTE (AUTO) ---
+            break;
+
+        case 2: /* CLIENTE (AUTO) */
             amIHost = 0;
-            char ip[32];
-            // Busca por 30 segundos
-            if (net_discover_host(port, 30, ip)) {
-                socket_fd = net_connect_to_host(ip, port);
-            } else {
-                printf("\nNo se encontro Host en la red local.\n");
-                pauseEnter();
+            {
+                char ip[32];
+                if (net_discover_host(port, DISCOVERY_TIMEOUT, ip)) {
+                    socket_fd = net_connect_to_host(ip, port);
+                } else {
+                    printf("\nNo se encontro Host en la red local.\n");
+                    pauseEnter();
+                }
             }
-        } else if (option == 3) {
-             // --- CLIENTE (MANUAL) ---
-             amIHost = 0;
-             char ip[32];
-             printf("\nIngresa la IP del Host: ");
-             readIn(ip, sizeof(ip));
-             socket_fd = net_connect_to_host(ip, port);
-        } else {
-            // Salir
+            break;
+
+        case 3: /* CLIENTE (MANUAL) */
+            amIHost = 0;
+            {
+                char ip[32];
+                printf("\nIngresa la IP del Host: ");
+                readIn(ip, sizeof(ip));
+                socket_fd = net_connect_to_host(ip, port);
+
+                if (socket_fd < 0) {
+                    // Registra error de parte de network y de aqui mostramos otro mensaje
+                    puts("No se pudo conectar al Host.");
+                    pauseEnter();
+                }
+            }
+            break;
+
+        case 4: /* VOLVER */
             net_cleanup();
             return;
+        
+        default:
+            puts("Opcion invalida.");
+            pauseEnter();
+            break; 
         }
     }
 

@@ -21,11 +21,6 @@
 #include <ws2tcpip.h>
 #include <time.h>
 
-// Librerias Necesarias para Winsock
-#define DISCOVERY_PORT 8889        // Puerto distinto para búsquedas UDP
-#define DISCOVERY_MSG "GATO_REQ"   // Cliente grita esto
-#define DISCOVERY_ACK "GATO_ACK"   // Host responde esto
-
 /* ---- INICIALIZACION Y LIMPIEZA ---- */
 
 // Inicializa Winsock. Necesario antes de usar cualquier función de red en Windows.
@@ -118,7 +113,7 @@ int net_connect_to_host(const char* ip, int port) {
 
     // Convertir IP texto a binario
     if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
-        printf("Direccion IP invalida: %s\n", ip);
+        printf("Direccion IP invalida\n");
         closesocket(sock);
         return -1;
     }
@@ -127,7 +122,7 @@ int net_connect_to_host(const char* ip, int port) {
 
     // 2. Conectar
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        printf("Error al conectar. ¿Esta el Host listo?\n");
+        printf("Error al conectar. Esta el Host listo?\n");
         closesocket(sock);
         return -1;
     }
@@ -224,8 +219,9 @@ int net_discover_host(int port, int timeout_sec, char* found_ip) {
     broadcast_addr.sin_port = htons(DISCOVERY_PORT);
     broadcast_addr.sin_addr.s_addr = INADDR_BROADCAST; // 255.255.255.255
 
-    printf("Buscando host en la red local (Max %d seg)...\n", timeout_sec);
+    printf("\nBuscando host en la red local (Max %d seg)...\n", timeout_sec);
 
+    // Bucle de búsqueda hasta timeout
     while (difftime(time(NULL), start_time) < timeout_sec) {
         // 1. Enviar grito "¿Hay alguien?"
         sendto(sock, DISCOVERY_MSG, strlen(DISCOVERY_MSG), 0, (struct sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
