@@ -21,8 +21,10 @@ jobs:
 
       # 5. Paso 2: Configurar GCC (MinGW)
       # Esta acción popular instala gcc automáticamente en el Runner de Windows
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2.2.0
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          install: mingw-w64-x86_64-gcc
 
       # 6. Paso 3: Compilar el proyecto
       # ¡Este es tu comando de compilación!
