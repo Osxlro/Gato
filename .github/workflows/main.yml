@@ -1,0 +1,44 @@
+# Nombre del "flujo de trabajo"
+name: Build Release Executable
+
+# 1. Cuándo ejecutarse:
+# Esto se activará solo cuando tú "crees una nueva release" en GitHub.
+on:
+  release:
+    types: [created]
+
+# 2. Qué hacer:
+jobs:
+  build:
+    # 3. La máquina virtual que usaremos:
+    # Usamos la última versión de Windows (para que compile un .exe)
+    runs-on: windows-latest
+
+    steps:
+      # 4. Paso 1: Descargar tu código fuente en la máquina virtual
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 5. Paso 2: Configurar GCC (MinGW)
+      # Esta acción popular instala gcc automáticamente en el Runner de Windows
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          install: mingw-w64-x86_64-gcc
+
+      # 6. Paso 3: Compilar el proyecto
+      # ¡Este es tu comando de compilación!
+      # (He añadido -static para que no dependa de DLLs externas)
+      - name: Compile
+        shell: bash
+        run: |
+          gcc src/*.c -o gato.exe -std=c11 -s -static -lws2_32
+
+      # 7. Paso 4: Subir el .exe a la Release
+      # Esta acción toma el .exe y lo adjunta a la release que acabas de crear.
+      - name: Upload executable to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./gato.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
