@@ -308,8 +308,4 @@ A continuación se detallan las funciones core del sistema, especificando su int
 ```bash
 gcc src/*.c -o gato.exe -lws2_32 -std=c11 -O2 -s -Wall --lws2_32
 ```
-
-## 4) Tamaño y Rendimiento
-- **Tamaño del Ejecutable:** ~38 KB (Linkeo estático, sin dependencias externas).
-
 ---
