@@ -304,10 +304,9 @@ A continuación se detallan las funciones core del sistema, especificando su int
 ## 3) Compilación
 
 ### Opción A: Compilación Manual (GCC)
-Si no usas Make, es **obligatorio** enlazar la librería de sockets (`-lws2_32`).
 
 ```bash
-gcc src/*.c -o gato.exe -lws2_32 -std=c11 -O2 -s -Wall
+gcc src/*.c -o gato.exe -lws2_32 -std=c11 -O2 -s -Wall --lws2_32
 ```
 
 ## 4) Tamaño y Rendimiento
