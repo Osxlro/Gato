@@ -5,22 +5,14 @@
  * - Implementar el bucle principal del menú de la aplicación (mainMenuLoop).
  * - Gestionar la navegación del usuario entre las diferentes pantallas
  *   (Jugar, Ranking, Ayuda, Salir).
- * - Solicitar al usuario la selección del modo de juego (JvJ o JvPC).
+ * - Solicitar al usuario la selección del modo de juego (JvJ, JvPC y JvJ Online).
  * - Invocar las funciones correspondientes de otros módulos (playPVP,
- * playPVC, loadRanking, showRanking, showHelp).
+ * playPVC, playOnline, loadRanking, showRanking, showHelp).
  *
  * Notas:
  * - Este archivo actúa como el "controlador" principal o el "director de
  * orquesta" de la aplicación, decidiendo qué módulo debe actuar.
- * - La lógica de manejo de entrada (scanf/getchar) es específica para
- * la navegación del menú, no para el juego en sí.
  *
- * Posibles bugs:
- * - La lectura de opciones (con 'scanf("%d", &option)' y 'getchar()'
- * para el submenú 'm') es frágil. Si el usuario introduce "1a" o "a",
- * 'scanf' fallará (dejando "a\n" en el búfer) y 'getchar' leerá la 'a',
- * provocando un bucle infinito de "Entrada inválida" o comportamiento
- * inesperado.
  */
 
  // Librerias del Juego

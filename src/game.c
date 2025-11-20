@@ -1,33 +1,23 @@
 /*
- * game.c
+ * Nombre del archivo: game.c
  *
  * Responsabilidades:
- * - Implementar los bucles de juego principales: Jugador vs Jugador (playPVP)
- * y Jugador vs PC (playPVC).
- * - Gestionar el estado del tablero (initBoard, applyMove, isCellEmpty).
- * - Implementar la lógica de turnos y la asignación de símbolos ('X'/'O').
- * - Determinar el resultado de la partida (checkWin, boardFull).
- * - Solicitar y validar la entrada de movimientos del usuario (readMove, isValidCell).
- * - Persistir los resultados al final de cada partida (llamando a upsertResult de io.h).
- * - Manejar la generación de números aleatorios para el jugador inicial (randomStarts).
- * - Contener funciones auxiliares para la lógica del juego (scoreOf).
+ * - Implementar los flujos principales de juego: Local (PvP), Contra IA (PvPC) y En Red (Online).
+ * - Centralizar la validación de movimientos (getValidMove) para evitar código repetido.
+ * - Centralizar la verificación de fin de juego (checkAndPrintEnd) para victorias y empates.
+ * - Gestionar la entrada de nombres de jugadores y su sanitización.
+ * - Coordinar la lógica de red (Handshake, Sincronización de turnos, Revancha) en el modo Online.
+ * - Persistir los resultados en el ranking local (llamando a upsertResult de io.c).
  *
- * Notas:
- * - Este es el "motor" central del juego.
- * - El estado del juego (tablero, nombres) se maneja como variables locales
- * dentro de las funciones de bucle de juego, no hay variables globales.
- *
- * Posibles bugs:
- * - Sin bugs conocidos.
  */
 
 // Librerias del juego
-#include "game.h"  // Prototipos de funciones y definiciones
-#include "ui.h"    // Para clearScreen()
-#include "io.h"    // Para upsertResult()
-#include "ai.h"    // Para AI_PLAYER_NAME
-#include "utils.h" // Para readIn()
-#include "network.h" // Para funciones de red
+#include "game.h"  
+#include "ui.h"    
+#include "io.h"    
+#include "ai.h"    
+#include "utils.h" 
+#include "network.h" 
 
 // Librerias por el Lenguaje
 #include <stdio.h>
@@ -40,11 +30,78 @@
 #define NAME_MAX 32
 #endif
 
-/* Funciones básicas (Solicitar Nombres) (Semilla de Aleatoriedad) */
-// Solicitar nombres.
-void askPlayerNames(char p1[], char p2[], int maxLen) { // PVP - Jugador vs Jugador
-    clearScreen();
+/* --- FUNCIONES PRIVADAS --- */
 
+// Semilla para aleatoriedad
+static int seeded = 0;
+static void ensureSeed(void) {
+    if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
+}
+
+static int readMove(int *r, int *c);
+static int scoreOf(int wins, int draws, int losses);
+
+/* *Solicita movimiento.
+ * Recibe 'header' para redibujar el título si hay que limpiar la pantalla por error.
+ */
+static int getValidMove(const char board[3][3], int *r, int *c, const char* header) {
+    printf("\nIngresa fila y columna (o 'q' para salir): ");
+
+    while (1) {
+        int res = readMove(r, c);
+        if (res == -1) return -1; // Rendición
+        
+        // Detectar tipo de error
+        int error = 0;
+        if (res == 0) error = 1;                            // Formato
+        else if (!isValidCell(*r, *c)) error = 2;           // Rango
+        else if (!isCellEmpty(board, *r, *c)) error = 3;    // Ocupado
+
+        if (error) {
+            if (error == 1) puts(">> Formato invalido. Usa: fila columna (ej. 1 2)");
+            if (error == 2) puts(">> Coordenadas fuera de rango (1-3).");
+            if (error == 3) puts(">> Esa casilla ya esta ocupada.");
+            
+            pauseEnter(); // Pausa para leer el error
+
+            // LIMPIEZA Y REDIBUJADO
+            clearScreen();
+            if (header) puts(header); // Restaurar el título
+            printBoard(board);        // Restaurar el tablero
+
+            printf("\nIntenta de nuevo ([1 2].. [3 1]..): ");
+            continue; 
+        }
+
+        return 1; // Movimiento válido
+    }
+}
+
+/*
+ * Verifica fin de juego.
+ * Imprime mensajes de Victoria o Empate.
+ * Retorna: 1 si terminó, 0 si sigue.
+ */
+static int checkAndPrintEnd(const char board[3][3], char sym, const char* winnerName) {
+    if (checkWin(board, sym)) {
+        clearScreen(); 
+        printBoard(board);
+        printf("\n¡GANASTE %s (%c)!\n", winnerName, sym);
+        return 1; // Victoria
+    }
+    if (boardFull(board)) {
+        clearScreen(); 
+        printBoard(board);
+        puts("\n¡EMPATE! Tablero lleno.");
+        return 1; // Empate
+    }
+    return 0; // Sigue jugando
+}
+
+/* --- FUNCIONES DE UI (NOMBRES) --- */
+
+void askPlayerNames(char p1[], char p2[], int maxLen) { // JUGADOR VS JUGADOR
+    clearScreen();
     puts("--- MODO JvJ ---");
     printf("Nombre Jugador 1: ");
     readIn(p1, maxLen);
@@ -57,9 +114,8 @@ void askPlayerNames(char p1[], char p2[], int maxLen) { // PVP - Jugador vs Juga
     if (p2[0] == '\0') strncpy(p2, "Jugador2", maxLen);
 }
 
-void askHumanName(char p1[], int maxLen) {              // PVC - Jugador vs PC  
+void askHumanName(char p1[], int maxLen) { // JUGADOR VS PC
     clearScreen();
-
     puts("--- MODO JvPC ---");
     printf("Tu nombre: ");
     readIn(p1, maxLen);
@@ -67,16 +123,11 @@ void askHumanName(char p1[], int maxLen) {              // PVC - Jugador vs PC
     if (p1[0] == '\0') strncpy(p1, "Humano", maxLen);
 }
 
-// Semilla para aleatoriedad (inicializar solo una vez)
-static int seeded = 0;
-static void ensureSeed(void) {
-    if (!seeded) { seeded = 1; srand((unsigned)time(NULL)); }
-}
+int randomStarts(void) { ensureSeed(); return rand() & 1; }
 
-// Devuelve 0 o 1 aleatoriamente para decidir quién inicia.
-int randomStarts(void) { ensureSeed(); return rand() & 1; } /* 0 o 1 */
+/* --- MODOS DE JUEGO --- */
 
-/* ---------- JvJ con inicio aleatorio ---------- */
+/* 1. Jugador vs Jugador (Local) */
 void playPVP(void) {
     char name1[NAME_MAX], name2[NAME_MAX];
     askPlayerNames(name1, name2, NAME_MAX);
@@ -84,88 +135,53 @@ void playPVP(void) {
     char board[3][3];
     initBoard(board);
 
-    /* Quien inicia lleva 'X' */
-    int starter = randomStarts();      /* 0 -> nombre1 empieza, 1 -> nombre2 empieza */
-    int current = starter;             /* 0 o 1 */
+    int starter = randomStarts();
+    int current = starter;
     int r, c;
+    int wins[2] = {0,0}, draws[2] = {0,0}, losses[2] = {0,0};
 
-    int wins[2]  = {0,0};
-    int draws[2] = {0,0};
-    int losses[2]= {0,0};
-
-    for (;;) { // Bucle infinito hasta que alguien gane o empate.
+    // Bucle de juego
+    for (;;) {
+        char headerStr[128];
+        snprintf(headerStr, sizeof(headerStr), "Modo: PvP | Turno: %s (%c)", 
+                 current==0 ? name1 : name2, (current==starter) ? 'X' : 'O');
+        
         clearScreen();
-        printf("Modo: Jugador vs Jugador\n");
-        printf("Inicia: %s \n", starter==0 ? name1 : name2);
-        printf("Turno:  %s (%c)\n",
-               current==0 ? name1 : name2,
-               (current==starter) ? 'X' : 'O');
+        puts(headerStr);
         printBoard(board);
 
-        printf("Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
-        
-        // Lee el movimiento (0 = error, -1 = salir, 1 = éxito)
-        int moveResult = readMove(&r,&c);
-        if (moveResult == 0) {          // Error
-            puts("Entrada Invalida.");
-            pauseEnter();
-            continue;
-
-        } else if (moveResult == -1) {  // Usuario quiere salir
-            clearScreen();
-            printBoard(board);
-
-            const char* quitterName = (current == 0) ? name1 : name2;
-            const char* winnerName = (current == 0) ? name2 : name1;
-            char sym = (current==starter) ? 'X' : 'O';
-
-            printf("\n%s (%c) ha abandonado la partida.\n", quitterName, sym);
-            printf("Gana %s!\n", winnerName);
-
-            wins[1-current]++; // El oponente gana
-            losses[current]++; // El jugador actual pierde
-            break; // Salir del bucle for(;;)
-
+        if (getValidMove(board, &r, &c, headerStr) == -1) {
+            const char* winner = (current == 0) ? name2 : name1;
+            const char* loser  = (current == 0) ? name1 : name2;
+            printf("\n%s se ha rendido. Gana %s!\n", loser, winner);
+            wins[1-current]++; losses[current]++;
+            break;
         }
-        
-        // Validar movimiento
-        if (!isValidCell(r, c)) { puts("Fuera de rango."); pauseEnter(); continue; }
-        if (!isCellEmpty(board, r, c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
 
         char sym = (current==starter) ? 'X' : 'O';
         applyMove(board, r, c, sym);
 
-        // Verificar Victoria o Empate
-        if (checkWin(board, sym)) {
-            clearScreen(); printBoard(board);
-            printf("\nGana %s (%c)\n", current==0 ? name1 : name2, sym);
-            wins[current]++; losses[1-current]++;
+        if (checkAndPrintEnd(board, sym, current==0 ? name1 : name2)) {
+            if (checkWin(board, sym)) { wins[current]++; losses[1-current]++; }
+            else { draws[0]++; draws[1]++; }
             break;
         }
-        if (boardFull(board)) {
-            clearScreen(); printBoard(board);
-            puts("\nEmpate!");
-            draws[0]++; draws[1]++;
-            break;
-        }
+        
         current = 1 - current;
     }
 
-    int score0 = scoreOf(wins[0], draws[0], losses[0]);
-    int score1 = scoreOf(wins[1], draws[1], losses[1]);
-
-    if (!upsertResult(name1, wins[0], draws[0], losses[0], score0))
-        puts("\n[ADVERTENCIA] No se pudo actualizar Score para Jugador 1.");
-    if (!upsertResult(name2, wins[1], draws[1], losses[1], score1))
-        puts("[ADVERTENCIA] No se pudo actualizar Score para Jugador 2.");
+    int s0 = scoreOf(wins[0], draws[0], losses[0]);
+    int s1 = scoreOf(wins[1], draws[1], losses[1]);
+    upsertResult(name1, wins[0], draws[0], losses[0], s0);
+    upsertResult(name2, wins[1], draws[1], losses[1], s1);
 
     printf("\nJugar otra partida JvJ? (s/n): ");
-    int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
-    if (ch=='s'||ch=='S') playPVP();
+    char resp[10]; readIn(resp, 10);
+    if (resp[0]=='s'||resp[0]=='S') playPVP();
+    
 }
 
-/* ---------- JvPC con inicio aleatorio ---------- */
-extern void pcMove(char board[3][3], char pcSym, char humanSym);
+/* 2. Jugador vs PC */
 void playPVC(void) {
     char human[NAME_MAX];
     const char pcName[] = AI_PLAYER_NAME;
@@ -174,390 +190,254 @@ void playPVC(void) {
     char board[3][3];
     initBoard(board);
 
-    int starter = randomStarts(); /* 0 -> Jugador inicia (X), 1 -> PC inicia (X) */
+    int starter = randomStarts();
     int current = starter;
+    int r, c;
+    int winsH=0, lossesH=0, winsPC=0, lossesPC=0, draws=0;
 
-    int winsH=0, drawsH=0, lossesH=0;
-    int winsPC=0, drawsPC=0, lossesPC=0;
+    for (;;) {
+        char headerStr[128];
+        snprintf(headerStr, sizeof(headerStr), "Modo: PvPC | Turno: %s", 
+                 current==0 ? human : pcName);
 
-    int r,c;
-    for (;;) { // Bucle infinito hasta que alguien gane o empate.
         clearScreen();
-        printf("Modo: Jugador vs PC\n");
-        printf("Inicia: %s \n", starter==0 ? human : pcName);
-        printf("Turno:  %s (%c)\n", current==0 ? human : pcName,
-               (current==starter) ? 'X' : 'O');
+        puts(headerStr);
         printBoard(board);
 
-        if (current == 0) { /* Jugador */
-            printf("Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
+        char sym = (current == starter) ? 'X' : 'O';
 
-            // Lee el movimiento (0 = error, -1 = salir, 1 = éxito)
-            int moveResult = readMove(&r,&c);
-            if (moveResult == 0) { puts("Entrada invalida."); pauseEnter(); continue; }
-            if (moveResult == -1) { 
-                clearScreen();
-                printBoard(board);
-                printf("\n%s (%c) ha abandonado la partida.\n",
-                       human,
-                       (current==starter) ? 'X' : 'O');
-                printf("Gana %s!\n", pcName);
+        if (current == 0) { /* Turno Humano */
+            // Pasamos headerStr
+            if (getValidMove(board, &r, &c, headerStr) == -1) {
+                printf("\nTe has rendido. Gana %s.\n", pcName);
                 winsPC++; lossesH++;
                 break;
-             }
-
-            // Validar movimiento
-            if (!isValidCell(r,c)) { puts("Fuera de rango."); pauseEnter(); continue; }
-            if (!isCellEmpty(board,r,c)) { puts("Casilla ocupada."); pauseEnter(); continue; }
-            char sym = (starter==0) ? 'X' : 'O';
+            }
             applyMove(board, r, c, sym);
-            if (checkWin(board, sym)) {
-                clearScreen(); printBoard(board);
-                printf("\nGana %s (%c)\n", human, sym);
-                winsH++; lossesPC++; break;
-            }
-        } else { /* PC */
-            char sym = (starter==1) ? 'X' : 'O';
+
+        } else { /* Turno PC */
             pcMove(board, sym, (sym=='X') ? 'O' : 'X');
-            if (checkWin(board, sym)) {
-                clearScreen(); printBoard(board);
-                printf("\nGana %s (%c)\n", pcName, sym);
-                winsPC++; lossesH++; break;
-            }
         }
 
-        if (boardFull(board)) {
-            clearScreen(); printBoard(board);
-            puts("\nEmpate!");
-            drawsH++; drawsPC++; break;
+        const char* currentName = (current==0) ? human : pcName;
+        
+        if (checkAndPrintEnd(board, sym, currentName)) {
+            if (checkWin(board, sym)) {
+                if (current==0) { winsH++; lossesPC++; } 
+                else { winsPC++; lossesH++; }
+            } else {
+                draws++;
+            }
+            break;
         }
+
         current = 1 - current;
     }
 
-    int scoreH  = scoreOf(winsH, drawsH, lossesH);
-    int scorePC = scoreOf(winsPC, drawsPC, lossesPC);
-
-    if (!upsertResult(human, winsH, drawsH, lossesH, scoreH))
-        puts("\n[ADVERTENCIA] No se pudo actualizar ranking para Jugador.");
-    if (!upsertResult(pcName, winsPC, drawsPC, lossesPC, scorePC))
-        puts("[ADVERTENCIA] No se pudo actualizar ranking para PC.");
+    upsertResult(human, winsH, draws, lossesH, scoreOf(winsH, draws, lossesH));
+    upsertResult(pcName, winsPC, draws, lossesPC, scoreOf(winsPC, draws, lossesPC));
 
     printf("\nJugar otra partida JvPC? (s/n): ");
-    int ch = getchar(); int dump; while ((dump=getchar())!='\n' && dump!=EOF){}
-    if (ch=='s'||ch=='S') playPVC();
+    char resp[10]; readIn(resp, 10);
+    if (resp[0]=='s'||resp[0]=='S') playPVC();
 }
 
-/* ---------- JvJ Online ---------- */
+/* 3. Online (LAN) */
 void playOnline(void) {
-    // 1. Inicializar Winsock
-    if (!net_init()) {
-        puts("Error inicializando red.");
-        pauseEnter();
-        return;
-    }
+    if (!net_init()) { puts("Error de red."); return; }
 
     clearScreen();
     puts("--- MODO ONLINE (LAN) ---");
-    
     char myName[NAME_MAX];
-    printf("Tu nombre para Online: ");
-
-    // 2. Leer Nombre del Jugador
+    printf("Tu nombre: ");
     readIn(myName, NAME_MAX);
     sanitizeString(myName);
     if (myName[0] == '\0') strcpy(myName, "Jugador");
 
-    // Variables de conexión
     int socket_fd = -1;
-    int amIHost = 0; 
+    int amIHost = 0;
     int port = GAME_PORT;
 
-    // 3. Bucle de Conexión
+    // Menú de Conexión
     while (socket_fd < 0) {
         clearScreen();
-
-        puts("--- MODO ONLINE (LAN) ---");
-        printf("Jugador: %s\n", myName);
-        puts("---------------------------");
-        puts("1. Crear Partida   (Ser Host)");
-        puts("2. Buscar Partida  (Auto-descubrimiento)");
-        puts("3. Conectar Manual (IP especifica)");
+        printf("Jugador: %s\n\n", myName);
+        puts("1. Crear Partida (Host)");
+        puts("2. Buscar Partida (Auto)");
+        puts("3. Conectar Manual (IP)");
         puts("4. Volver");
         printf("Opcion: ");
 
-        char buffer[10];
-        readIn(buffer, sizeof(buffer));
-        int option = atoi(buffer);
-        
-        switch (option) {
-        case 1: /* HOST */
-            amIHost = 1;
-            socket_fd = net_host_wait_for_client(port);
-            if (socket_fd < 0) {
-                puts("Tiempo de espera agotado o error del servidor.");
-                pauseEnter();
-            }
-            break;
+        char buf[10]; readIn(buf, 10);
+        int opt = atoi(buf);
 
-        case 2: /* CLIENTE (AUTO) */
-            amIHost = 0;
-            {
-                char ip[32];
-                if (net_discover_host(port, DISCOVERY_TIMEOUT, ip)) {
+        switch (opt) {
+            case 1: 
+                amIHost = 1; 
+                socket_fd = net_host_wait_for_client(port); 
+                if(socket_fd<0) pauseEnter();
+                break;
+            case 2: {
+                amIHost = 0; char ip[32];
+                if (net_discover_host(port, DISCOVERY_TIMEOUT, ip)) 
                     socket_fd = net_connect_to_host(ip, port);
-                } else {
-                    printf("\nNo se encontro Host en la red local.\n");
-                    pauseEnter();
-                }
+                else { puts("No encontrado."); pauseEnter(); }
+                break;
             }
-            break;
-
-        case 3: /* CLIENTE (MANUAL) */
-            amIHost = 0;
-            {
-                char ip[32];
-                printf("\nIngresa la IP del Host: ");
-                readIn(ip, sizeof(ip));
-
-                printf("Conectando a %s:%d...\n", ip, port);
-
+            case 3: {
+                amIHost = 0; char ip[32];
+                printf("IP Host: "); readIn(ip, 32);
+                printf("Conectando...");
                 socket_fd = net_connect_to_host(ip, port);
-                if (socket_fd < 0) {
-                    // Registra error de parte de network y de aqui mostramos otro mensaje
-                    puts("No se pudo conectar al Host.");
-                    pauseEnter();
-                }
+                if(socket_fd<0) pauseEnter();
+                break;
             }
-            break;
-
-        case 4: /* VOLVER */
-            net_cleanup();
-            return;
-        
-        default:
-            puts("Opcion invalida.");
-            pauseEnter();
-            break; 
+            case 4: net_cleanup(); return;
+            default: puts("Invalido."); pauseEnter(); break;
         }
     }
 
-    // 4. Handshake (Intercambio de Nombres)
-    printf("\nConectado! Intercambiando datos...\n");
+    // Handshake
+    printf("\nConectado! Intercambiando nombres...\n");
     char rivalName[NAME_MAX];
-    
     net_send_name(socket_fd, myName);
     if (!net_receive_name(socket_fd, rivalName)) {
-        puts("Error de protocolo (handshake).");
-        net_close(socket_fd);
-        net_cleanup();
-        pauseEnter();
-        return;
+        puts("Error handshake."); net_close(socket_fd); net_cleanup(); return;
     }
-    if (rivalName[0] == '\0') strcpy(rivalName, "Rival");
+    if (!rivalName[0]) strcpy(rivalName, "Rival");
 
-    // 5. Bucle de Partidas (Rematch Loop)
+    // Bucle Partidas
     int playing = 1;
-    int starter_offset = 0; // Alternar quien inicia cada partida
+    int starter_offset = 0;
 
     while (playing) {
-        char board[3][3];
-        initBoard(board);
-        
-        // Configuración fija: Host=X, Cliente=O
-        char mySym    = amIHost ? 'X' : 'O';
+        char board[3][3]; initBoard(board);
+        char mySym = amIHost ? 'X' : 'O';
         char rivalSym = amIHost ? 'O' : 'X';
-        
-        // El Host (X) siempre inicia el turno
-        int current = starter_offset; // 0=X, 1=O
-        int r, c;
-        int gameEnded = 0; // Bandera para saber si la partida terminó
+        int current = starter_offset;
+        int gameEnded = 0;
 
-        // --- Bucle de Turnos ---
-        for (;;) {
+for (;;) {
+            char headerStr[128];
+            snprintf(headerStr, sizeof(headerStr), 
+                     "Modo: Online: %s (%c) vs %s (%c)", myName, mySym, rivalName, rivalSym);
+
             clearScreen();
-            printf("Modo: Online\n");
-            printf("------------------------------\n");
-            printf(" TU:    %s (%c)\n", myName, mySym);
-            printf(" RIVAL: %s (%c)\n", rivalName, rivalSym);
-            printf("------------------------------\n");
+            puts(headerStr);
             printBoard(board);
 
-            // ¿Es mi turno?
             int isMyTurn = (current == 0 && amIHost) || (current == 1 && !amIHost);
 
             if (isMyTurn) {
-                printf("\n[TU TURNO] Ingresa fila y columna ([1 3]..[2 1]..) o 'q' para salir: ");
-                int res = readMove(&r, &c);
+                int r, c;
+                int res = getValidMove(board, &r, &c, headerStr);
 
-                if (res == -1) { // 'q' presionada
-                    net_send_move(socket_fd, -1, -1); // Avisar rendición
-                    printf("\nTe has rendido. Gana %s.\n", rivalName);
-                    // (Opcional: upsertResult para registrar derrota)
-                    gameEnded = 1;
-                    break;
+                if (res == -1) { 
+                    gameEnded = 1; break;
                 }
                 
-                if (res == 0 || !isValidCell(r, c) || !isCellEmpty(board, r, c)) {
-                    puts("Movimiento invalido.");
-                    pauseEnter();
-                    continue;
-                }
-
-                // Aplicar y enviar
                 applyMove(board, r, c, mySym);
                 net_send_move(socket_fd, r, c);
 
                 if (checkWin(board, mySym)) {
                     clearScreen(); printBoard(board);
-                    printf("\nFELICIDADES %s HAS GANADO.\n", myName);
-                    // (Opcional: upsertResult para registrar victoria)
-                    gameEnded = 1;
-                    break;
+                    printf("\nGANASTE!\n");
+                    upsertResult(myName, 1, 0, 0, 3);
+                    gameEnded = 1; break;
                 }
 
             } else {
                 printf("\n[ESPERANDO A %s]...\n", rivalName);
-                
-                // Bloquea hasta recibir
+                int r, c;
                 if (!net_receive_move(socket_fd, &r, &c)) {
-                    puts("\nError: Se perdio la conexion con el rival.");
-                    playing = 0; // Salir del bucle principal
-                    gameEnded = 1; // Salir del bucle de juego
-                    break; 
+                    puts("Desconectado."); playing=0; gameEnded=1; break;
                 }
-
-                // Chequear rendición del rival
                 if (r == -1) {
-                    printf("\n%s SE HA RENDIDO, GANASTE.\n", rivalName);
-                    // (Opcional: upsertResult para registrar victoria)
-                    gameEnded = 1;
-                    break;
+                    printf("\n%s SE RINDIO. GANASTE.\n", rivalName);
+                    upsertResult(myName, 1, 0, 0, 3);
+                    gameEnded=1; break;
                 }
-
                 applyMove(board, r, c, rivalSym);
-
                 if (checkWin(board, rivalSym)) {
                     clearScreen(); printBoard(board);
-                    printf("\n%s te ha ganado. Suerte la proxima.\n", rivalName);
-                    // (Opcional: upsertResult para registrar derrota)
-                    gameEnded = 1;
-                    break;
+                    printf("\nPerdiste.\n");
+                    upsertResult(myName, 0, 0, 1, 0);
+                    gameEnded=1; break;
                 }
             }
 
             if (boardFull(board)) {
                 clearScreen(); printBoard(board);
-                puts("\nEMPATE Partida reñida.");
-                gameEnded = 1;
-                break;
+                puts("\nEMPATE");
+                // Guardar empate
+                upsertResult(myName, 0, 1, 0, 1);
+                gameEnded = 1; break;
             }
-
-            current = 1 - current; // Cambio de turno
+            current = 1 - current;
         }
 
-        // Si se perdió la conexión abruptamente, salimos
-        if (playing == 0) break;
+        if (!playing) break;
 
-        // 6. Votación de Revancha
         if (gameEnded) {
-            printf("\nJugar de nuevo contra %s? (s/n): ", rivalName);
-            char vote[10];
-            readIn(vote, sizeof(vote));
-            int my_vote = (vote[0] == 's' || vote[0] == 'S');
-
-            printf("Esperando respuesta de %s...\n", rivalName);
+            printf("\nRevancha? (s/n): ");
+            char buf[10]; readIn(buf, 10);
+            int vote = (buf[0]=='s'||buf[0]=='S');
+            printf("Esperando al rival...\n");
             
-            if (net_negotiate_rematch(socket_fd, my_vote)) {
-                printf("Ambos aceptaron, Reiniciando...\n");
-                starter_offset = 1 - starter_offset; // Alternar quien inicia
-                // El bucle 'while(playing)' continúa, se reinicia el tablero
+            if (net_negotiate_rematch(socket_fd, vote)) {
+                starter_offset = 1 - starter_offset; // Alternar turno
             } else {
-                printf("Uno de los jugadores decidio salir.\n");
+                printf("Fin del juego.\n");
                 playing = 0;
             }
         }
     }
-
-    puts("\nCerrando conexion...");
     net_close(socket_fd);
     net_cleanup();
 }
 
- /* Funciones de Verificación
- * (Verificar Celdas, Aplicar Movimiento, Verificar Victoria, Tablero Lleno,)
- */
 
-// Verifica si las coordenadas (r, c) están dentro del rango 1-3.
-int isValidCell(int r, int c) {
-    return r >= 1 && r <= 3 && c >= 1 && c <= 3;
-}
+/* --- LOGICA CORE --- */
 
-// Inicializa el tablero 3x3 con espacios vacíos ' '.
+int isValidCell(int r, int c) { return r >= 1 && r <= 3 && c >= 1 && c <= 3; }
+
 void initBoard(char board[3][3]) {
-    for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c)
-            board[r][c] = ' ';
+    for (int r=0;r<3;r++) for(int c=0;c<3;c++) board[r][c]=' ';
 }
 
-// Comprueba si una celda específica del tablero (coordenadas 1-3) está vacía.
 int isCellEmpty(const char board[3][3], int r, int c) {
     return board[r-1][c-1] == ' ';
 }
 
-// Coloca un símbolo (sym) en la celda (r, c) del tablero.
-// Devuelve 1 si tuvo éxito, 0 si la celda no era válida o estaba ocupada.
 int applyMove(char board[3][3], int r, int c, char sym) {
-    if (!isValidCell(r, c)) return 0;
-    if (!isCellEmpty(board, r, c)) return 0;
+    if (!isValidCell(r, c) || !isCellEmpty(board, r, c)) return 0;
     board[r-1][c-1] = sym;
     return 1;
 }
 
-// Verifica si el jugador con el símbolo 'sym' ha ganado (3 en línea).
 int checkWin(const char board[3][3], char sym) {
-    // filas y columnas
-    for (int i = 0; i < 3; ++i) {
+    for (int i=0; i<3; ++i) {
         if (board[i][0]==sym && board[i][1]==sym && board[i][2]==sym) return 1;
         if (board[0][i]==sym && board[1][i]==sym && board[2][i]==sym) return 1;
     }
-    // diagonales
     if (board[0][0]==sym && board[1][1]==sym && board[2][2]==sym) return 1;
     if (board[0][2]==sym && board[1][1]==sym && board[2][0]==sym) return 1;
     return 0;
 }
 
-// Comprueba si el tablero está lleno (no quedan espacios ' ').
 int boardFull(const char board[3][3]) {
-    for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c)
-            if (board[r][c] == ' ') return 0;
+    for(int r=0;r<3;r++) for(int c=0;c<3;c++) if(board[r][c]==' ') return 0;
     return 1;
 }
 
-// Lee la entrada del usuario para fila y columna (ej: "1 2") y limpia el búfer.
-int readMove(int *r, int *c) {
-    char tempBuffer[100];
-
-    // 1. Leer la linea completa.
-    if(!readIn(tempBuffer, sizeof(tempBuffer))) {
-        return 0; // Error o EOF
-    }
-
-    // 2. Verificar si el usuario quiere salir ('q' o 'Q').
-    if ((tolower((unsigned char)tempBuffer[0]) == 'q') && tempBuffer[1] == '\0') {
-        return -1; // Devolvemos -1 como señal de "salir"
-    }
-    
-    // 2. Parsear datos desde el buffer.
-    if (sscanf(tempBuffer, "%d %d", r, c) != 2) {
-        return 0; // Fallo al parsear dos enteros
-    }
-
-    return 1; // Lectura exitosa
+static int readMove(int *r, int *c) {
+    char buf[100];
+    if(!readIn(buf, sizeof(buf))) return 0;
+    if (tolower((unsigned char)buf[0]) == 'q' && buf[1]=='\0') return -1;
+    if (sscanf(buf, "%d %d", r, c) != 2) return 0;
+    return 1;
 }
 
-// Calcula el puntaje basado en victorias (3 pts) y empates (1 pto).
-int scoreOf(int wins, int draws, int losses) {
-    (void)losses;
-    return 3*wins + 1*draws;
+static int scoreOf(int wins, int draws, int losses) {
+    (void)losses; return 3*wins + 1*draws;
 }

@@ -26,7 +26,6 @@
 // Inicializa Winsock. Necesario antes de usar cualquier función de red en Windows.
 int net_init(void) {
     WSADATA wsaData;
-    // Pedimos la versión 2.2 de Winsock
     int res = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (res != 0) {
         printf("Error al iniciar Winsock: %d\n", res);
@@ -35,7 +34,7 @@ int net_init(void) {
     return 1;
 }
 
-// Limpia Winsock. Llamar al finalizar la aplicación.
+// Limpia Winsock.
 void net_cleanup(void) {
     WSACleanup();
 }
