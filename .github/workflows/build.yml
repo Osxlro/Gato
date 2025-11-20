@@ -22,7 +22,7 @@ jobs:
       # 5. Paso 2: Configurar GCC (MinGW)
       # Esta acción popular instala gcc automáticamente en el Runner de Windows
       - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2
+        uses: egor-tensin/setup-mingw@v2.2.0
 
       # 6. Paso 3: Compilar el proyecto
       # ¡Este es tu comando de compilación!
@@ -30,16 +30,13 @@ jobs:
       - name: Compile
         shell: bash
         run: |
-          gcc src/*.c -o gato.exe -std=c11 -s -static -lws2_32 -lpthread
+          gcc src/*.c -o gato.exe -std=c11 -s -static -lws2_32
 
       # 7. Paso 4: Subir el .exe a la Release
       # Esta acción toma el .exe y lo adjunta a la release que acabas de crear.
       - name: Upload executable to release
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./gato.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./gato.exe
-          asset_name: gato.exe
-          asset_content_type: application/octet-stream
