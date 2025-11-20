@@ -1,22 +1,23 @@
 # GATO JUEGO PROYECTO
 
-> Nombre: Oscurin   |   Programación Estructurada  |  Fecha: 2025-11-16
-
+> **Nombre:** Oscurin | **Programación Estructurada** | **Fecha:** 2025-11-16 | **Plataforma:** Windows
 
 ## PARTE I - MAPA DE NAVEGACIÓN
 
-> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7 **Sería muy útil si me apoya con eso**
+> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7
 
 ### Mapa de navegación (alto nivel)
 
 ```
 [Inicio]
   ├─ 1) Jugar
-  │     ├─ a) Jugador vs Jugador
-  │     │      └─ Tablero 3x3 → Resultado → ¿Jugar de nuevo?
-  │     └─ b) Jugador vs PC
-  │            └─ Tablero 3x3 → Resultado → ¿Jugar de nuevo?
-  ├─ 2) Tabla de posiciones (ranking)
+  │     ├─ a) Jugador vs Jugador (Local)
+  │     ├─ b) Jugador vs PC (IA)
+  │     └─ c) Jugador vs Jugador Online (LAN)
+  │            ├─ 1. Crear Partida (Host)
+  │            ├─ 2. Buscar Partida (Auto-descubrimiento)
+  │            └─ 3. Conectar Manual (IP)
+  ├─ 2) Tabla de posiciones (Ranking Local)
   ├─ 3) Ayuda / Instrucciones
   └─ 4) Salir
 ```
@@ -42,61 +43,58 @@ Seleccione una opción: _
 [1] Seleccione modo:
 a) Jugador vs Jugador
 b) Jugador vs PC
-c) Volver
+c) Jugador vs Jugador Online
+d) Volver
 Opcion: _
 ```
 
-### Pantalla: Captura de nombres
-Se muestra al inicio de ``playPVP`` o ``playPVC``
+### Pantalla: Modo Online (Configuración)
 ```
-Nombre Jugador 1: ____________
-Nombre Jugador 2: ____________ // Solo aplica en playPVP
+Jugador: Oscurin
+---------------------------
+1. Crear Partida (Host)
+2. Buscar Partida (Auto)
+3. Conectar Manual (IP)
+4. Volver
+Opcion: _
 ```
 
-### Pantalla: Tablero 3x3
+### Pantalla: Tablero 3x3 (En Partida)
 ```
+Modo: PvP | Turno: Jugador1 (X)
+------------------------------
+
     Col: 1   2   3
 Fil       |   |   
- 1        |   |
+ 1      X |   |
        ---+---+---
- 2        |   |
+ 2        | O |
        ---+---+---
  3        |   |
 
-Turno: <Nombre> (<X/O>)
-Ingrese fila y columna ([1 3]..[2 1]..): _
+Ingresa fila y columna (o 'q' para salir): _
 ```
 
-#### Mensajes de validación (ejemplos)
-- **Entrada inválida**: si no son números.
-- **Fuera de rango**: si no es 1, 2 o 3.
-- **Casilla ocupada**: si la celda ya tiene 'X' o 'O'.
-- **Turno**: alterna automáticamente.
-- **Victoria**: muestra línea ganadora (h, v, d) y nombre.
-- **Empate**: tablero lleno sin ganador.
-
-### Pantalla: Resultado
-```
-Resultado: [Gana <Nombre> / Empate]
-¿Jugar de nuevo? (s/n): _
-```
+#### Mensajes de validación y control
+- **Entrada inválida**: Limpia la pantalla y pide reingresar.
+- **Fuera de rango / Ocupada**: Muestra error específico y reintenta.
+- **Rendición ('q')**: Termina la partida, envía señal al rival y otorga la victoria.
+- **Revancha (Online)**: Al terminar, ambos jugadores votan (s/n) para jugar de nuevo.
 
 ### Pantalla: Tabla de posiciones (Ranking)
 ```
 +----+------------------------------+---+---+---+--------+
 | #  | Jugadores                    | G | E | P | Puntaje|
 +----+------------------------------+---+---+---+--------+
-| 1  | Humano1                      | 2 | 1 | 0 | 7      |
-| 2  | Humano2                      | 0 | 1 | 2 | 1      |
+| 1  | Oscurin                      | 5 | 2 | 1 | 17     |
+| 2  | Pepito                       | 1 | 2 | 5 | 5      |
 +----+------------------------------+---+---+---+--------+
 
 +--------------------------------------------------------+
 | Estadisticas de la IA (PC)                             |
 +------------------------------+---+---+---+-------------+
-| Jarvis (PC)                  | 2 | 0 | 0 | 6           |
+| Jarvis (PC)                  | 8 | 1 | 0 | 25          |
 +------------------------------+---+---+---+-------------+
-
-Presiona Enter para continuar...
 ```
 
 ### Pantalla: Ayuda / Instrucciones
@@ -107,347 +105,212 @@ Presiona Enter para continuar...
 - **Puntaje sugerido**:
   G=3, E=1, P=0.
 
-Se guarda el Score del usuario en el Ranking.
-
-Presiona Enter para continuar...
+Se guarda el Score del usuario en el Ranking local.
 ```
----
-#### Notas de accesibilidad (terminal)
-- Contraste alto y etiquetas claras.
-- Atajos de teclado simples (números/letras).
-- Mensajes de error concretos.
 
 ---
 # PARTE II - DIAGRAMA DE BLOQUES
 
 ```
 [INICIO]
-   |
-   v
+   |
+   v
 [MENU PRINCIPAL] (mainMenuLoop)
-   |--(1) Jugar -----------------------------.
-   |                                         |
-   |                                         v
-   |                            [Seleccionar modo] (a/b/c)
-   |                               |        |
-   |                               |        +--(b) playPVC()
-   |                         _     |                    |
-   |                               v                    v
-   |                      (a) playPVP()        [askHumanName]
-   |                               |                    |
-   |                               v                    v
-   |                          [askPlayerNames]   [Init tablero]
-   |                               |                    |
-   |                               v                    v
-   |                          [Init tablero]      [Bucle de turnos]
-   |                               |                    |
-   |                               v                    v
-   |                          [Bucle de turnos] --> [Leer/validar jugada]
-   |       _                       |               (o) [pcMove]
-   |                               v                    |
-   |                         [Check win/empate] <--------
-   |             ------------------+------------------.
-   |             |                                     |
-   |             v                                     v
-   |       [Victoria]                           [Empate]
-   |             \___________________________________/
-   |                                          v
-   |                                  [Calcular puntaje]
-   |     _                                    |
-   |                                         v
-   |                               [Guardar en (upsertResult)]
-   |                                         |
-   |                                         v
-   |                                  [¿Jugar de nuevo? (s/n)]
-   |                                     |        |
-   |<-(s)--------------------------------'        | (n)
-   |                                              v
-   '------------------------------------------[VOLVER al Menú]
-   |
-   +--(2) Tabla de posiciones --> [loadRanking] -> [sortRankingDesc] -> [showRanking] -> [VOLVER]
-   |
-   +--(3) Ayuda/Instrucciones  --> [showHelp]   --> [VOLVER]
-   |
-   +--(4) Salir  ----------------------------------------> [FIN]
+   |--(1) Jugar -----------------------------.
+   |                                         |
+   |                                         v
+   |                                [Seleccionar modo]
+   |                                   |    |    |
+   |                                   |    |    +--(c) playOnline()
+   |                                   |    |           |
+   |                                   |    |           v
+   |                                   |    |     [Menu Conexión]
+   |                                   |    |      |          |
+   |                                   |    |    Host       Cliente
+   |                                   |    |   (TCP/UDP)  (TCP/UDP)
+   |                                   |    |      |          |
+   |                                   |    |      v          v
+   |                                   |    |     [Intercambiar Nombres]
+   |                                   |    |           |
+   |                                   |    +--(b) playPVC()
+   |                                   |            |
+   |                                   v            v
+   |                             (a) playPVP()    [askHumanName]
+   |                                   |            |
+   |                                   v            v
+   |                            [askPlayerNames]  [Init tablero]
+   |                                   |            |
+   |                                   v            v
+   |                              [Init tablero]   [Bucle de turnos]
+   |                                   |            |
+   |                                   v            v
+   |                           [Bucle de turnos] --> [getValidMove]
+   |                                   |            |
+   |                                   v            v
+   |                          [Check win/empate] <---
+   |                                   |
+   |             .---------------------+---------------------.
+   |             |                                           |
+   |             v                                           v
+   |        [Victoria]                                    [Empate]
+   |             \___________________________________________/
+   |                                     v
+   |                            [Calcular puntaje]
+   |                                     |
+   |                                     v
+   |                         [Guardar en (upsertResult)]
+   |                                     |
+   |                                     v
+   |                           [¿Jugar de nuevo? (s/n)]
+   |                                  |        |
+   |<-(s)-----------------------------'        | (n)
+   |                                           v
+   '-----------------------------------[VOLVER al Menú]
+   |
+   +--(2) Tabla de posiciones --> [loadRanking] -> [sortRankingDesc] -> [showRanking] -> [VOLVER]
+   |
+   +--(3) Ayuda/Instrucciones  --> [showHelp]   --> [VOLVER]
+   |
+   +--(4) Salir  ----------------------------------------> [FIN]
 ```
----
-# PARTE III — Diseño técnico (C)
-
-> **Suposiciones de entorno**  
-> - Compilador: gcc (C11/C17).  
-> - Arquitectura x64 típica: `char`=1 B, `int`=4 B, `double`=8 B, puntero=8 B.  
-> - Interfaz: consola/terminal.  
-> - Paradigma: **estructurado** y **modular** (multiarchivo).  
-> - **Sin variables globales**: datos se pasan por parámetros (valor/referencia).
 
 ---
+# PARTE III — DISEÑO TÉCNICO (C)
 
-## 1) Tipos de datos (justificación y estimación de bytes)
+> **Suposiciones de entorno**
+> - **Sistema Operativo:** Windows (Requerido por librería `winsock2`).
+> - **Compilador:** GCC (MinGW recomendado).
+> - **Arquitectura:** x64.
+> - **Paradigma:** Estructurado y modular.
 
-### 1.1 Tablero de juego
-```c
-char board[3][3];  // 'X', 'O' o ' ' (vacío)
-```
-- **Por qué `char`**: mínimo almacenamiento y se imprime fácil en consola.  
-- **Memoria**: `3 * 3 * 1 = 9 bytes`.
+## 1) Estructura y Datos
 
----
+### 1.1 Protocolo de Red (Modo Online)
+Comunicación binaria directa sobre Sockets TCP/UDP (`network.c`).
+- **Autodescubrimiento:** UDP Broadcast al puerto 8889.
+- **Juego:** Conexión TCP persistente al puerto 8888.
+- **Datos:**
+    - Movimiento: 2 bytes `[fila, columna]`.
+    - Handshake: 32 bytes `[Nombre]`.
+    - Control: `{-1, -1}` para rendición.
 
-### 1.2 Nombres de jugadores
-```c
-#define NAME_MAX 32
-char nameP1[NAME_MAX];
-char nameP2[NAME_MAX];   // En JvPC será "PC"
-```
-- **Razón**: 32 chars alcanzan para nombres comunes y evitan overflow.  
-- **Memoria**: `2 * 32 = 64 bytes`.
+### 1.2 Persistencia Local
+- **Archivo:** `ranking.csv`.
+- **Formato:** `Nombre,Victorias,Empates,Derrotas,Puntaje`.
 
----
+## 2) Diseño de Módulos
 
-### 1.3 Contadores y puntaje por partida
-```c
-int winsP1, drawsP1, lossesP1;
-int winsP2, drawsP2, lossesP2;
-int scoreP1, scoreP2;    // Puntaje = 3*G + 1*E + 0*P
-```
-- **Uso**: métricas al terminar cada partida para persistencia.  
-- **Memoria**: `8 * 4 = 32 bytes`.
+| Módulo | Archivo | Responsabilidad |
+| :--- | :--- | :--- |
+| **Core** | `main.c` | Punto de entrada. |
+| **Controlador** | `app.c` | Menú principal y navegación. |
+| **Lógica** | `game.c` | Reglas de Gato, validación (DRY), control de turnos PvP/PvC/Online. |
+| **IA** | `ai.c` | Algoritmo para la computadora (intenta ganar, bloquear o tomar centro). |
+| **Red** | `network.c` | Capa de abstracción de Winsock (Sockets, TCP, UDP Broadcast). |
+| **Datos** | `io.c` | Gestión de archivo CSV (Ranking). |
+| **Vista** | `ui.c` | Dibujado en consola. |
 
-> Nota: podría reducirse a contadores solo de la **partida actual** y calcular el puntaje al final.
+## 3. Definición de Tipos de Datos
+A continuación se describen las estructuras de datos principales, justificando su elección para optimizar el uso de memoria y rendimiento.
 
----
+### 1.1 Tablero de Juego (`board`)
+- **Tipo:** `char board[3][3]`
+- **Argumentación:** Se utiliza `char` (1 byte) en lugar de `int` (4 bytes) porque cada celda solo necesita almacenar 3 estados posibles: `'X'`, `'O'`, o `' '` (vacío). Usar enteros desperdiciaría memoria.
+- **Estimación de Memoria:**
+    - `3 filas * 3 columnas * 1 byte =` **9 bytes**.
 
-### 1.4 Control de flujo de juego / entrada
-```c
-int currentPlayer;  // 0 o 1
-int row, col;       // 1..3
-int movesCount;     // 0..9
-int option;         // menú
-```
-- **Memoria estimada**: `~16–20 bytes`.
-
----
-
-### 1.5 Estructura para **ranking** (persistencia y consulta)
+### 1.2 Registro de Jugador (`PlayerRecord`)
+Estructura utilizada para la persistencia de datos en el Ranking.
 ```c
 typedef struct {
-    char name[NAME_MAX];
-    int  wins, draws, losses;
-    int  score;
+    char name[32];
+    int wins, draws, losses;
+    int score;
 } PlayerRecord;
-
-#define MAX_RECORDS 1000
-PlayerRecord ranking[MAX_RECORDS];
-int rankingCount;
 ```
-- **Por qué `struct`**: agrupa datos del jugador y facilita ordenamiento.  
-- **Memoria por registro**: `32 + 4*4 = 48 bytes`.  
-- **Para 1000 registros**: `~48 KB`. Ajusta `MAX_RECORDS` a tus necesidades.
+**Argumentación**: Se agrupan los datos en un struct para mantener la coherencia lógica y facilitar el ordenamiento (sorting) y la escritura en disco como un solo bloque. name se limita a 32 bytes para prevenir desbordamientos de búfer (Buffer Overflows) y mantener un tamaño fijo predecible.
+
+**Estimación de Memoria** (por registro): ```name```: 32 bytes. ```int``` (x4)``: 4 bytes * 4 = 16 bytes.
+
+Total: 48 bytes por jugador. 
+Nota: Para un ranking de 1000 jugadores, el consumo es apenas ~48 KB de RAM.
+
+### 1.3 Protocolo de Red (Buffers)
+Tipo: `char buffer[2]` (para movimientos) y `char buffer[32]` (para nombres/IPs).
+
+**Argumentación**: La comunicación por Sockets TCP/UDP es costosa. Enviamos la mínima cantidad de datos posible (binarios) en lugar de textos largos (JSON/XML).
+
+Estimación:
+- **Paquete de movimiento**: 2 bytes (Fila + Columna).
+- **Handshake**: 32 bytes fijos.
+
+## 2. Definición de Funciones Principales
+
+A continuación se detallan las funciones core del sistema, especificando su interfaz y comportamiento.
+
+### Módulo Lógica (`game.c`)
+
+#### `getValidMove`
+- **Descripción:** Solicita al usuario una coordenada, verifica que el formato sea correcto y gestiona los reintentos si hay errores, limpiando la pantalla para mantener la UI ordenada.
+- **Validaciones:**
+  - Entrada numérica correcta (`sscanf`).
+  - Rango de coordenadas (1 a 3).
+  - Disponibilidad de la celda (que no esté ocupada).
+- **Parámetros:**
+  - `board` (Referencia - `const char[][]`): El estado actual del tablero para lectura.
+  - `r`, `c` (Referencia - `int*`): Punteros donde se almacenarán la fila y columna válidas.
+  - `header` (Referencia - `const char*`): Texto del título para redibujar la UI en caso de error.
+- **Retorno:** `int` (1 = Éxito, -1 = Usuario se rinde).
+
+#### `checkAndPrintEnd`
+- **Descripción:** Evalúa el estado del tablero después de cada movimiento para determinar si la partida ha concluido por victoria o empate, y muestra el mensaje correspondiente.
+- **Validaciones:** Verifica líneas horizontales, verticales y diagonales. Verifica si el tablero está lleno.
+- **Parámetros:**
+  - `board` (Referencia - `const char[][]`): Tablero a evaluar.
+  - `sym` (Valor - `char`): Símbolo del jugador actual ('X' o 'O').
+  - `winnerName` (Referencia - `const char*`): Nombre para mostrar en caso de victoria.
+- **Retorno:** `int` (1 = Juego terminado, 0 = Juego continúa).
 
 ---
 
-### 1.6 Estimación total (runtime sin ranking cargado)
-- Tablero: **9 B**  
-- Nombres: **64 B**  
-- Contadores/flujo: **< 64 B**  
-- **Total fijo**: **≤ 150 B** (+ stack y buffers de E/S).  
-- Al cargar ranking completo (1000): **~50 KB** adicionales.
+### Módulo Red (`network.c`)
+
+#### `net_host_wait_for_client`
+- **Descripción:** Inicia un servidor TCP y simultáneamente escucha peticiones UDP (Broadcast) para el autodescubrimiento, permitiendo que el Host sea encontrado sin escribir IPs.
+- **Validaciones:** Comprueba que los puertos (8888 y 8889) estén libres y que `winsock` se haya iniciado.
+- **Parámetros:**
+  - `tcp_port` (Valor - `int`): El puerto donde se establecerá el juego.
+- **Retorno:** `int` (ID del Socket del cliente conectado o -1 si hay error/timeout).
+
+#### `net_send_move`
+- **Descripción:** Empaqueta las coordenadas de la jugada en un buffer de 2 bytes y lo envía a través del socket TCP conectado.
+- **Validaciones:** Verifica que la función `send` del sistema operativo retorne el número correcto de bytes enviados.
+- **Parámetros:**
+  - `socket` (Valor - `int`): Descriptor del socket activo.
+  - `r`, `c` (Valor - `int`): Coordenadas de la jugada.
+- **Retorno:** `int` (1 = Envío exitoso, 0 = Error de conexión).
 
 ---
 
-## 2) Diseño de funciones (qué hacen, validaciones, parámetros, retorno)
+### Módulo Persistencia (`io.c`)
 
-> **Convenciones**  
-> - **Por valor**: escalares (`int`, `char`) cuando no se requiere modificar el argumento del llamador.  
-> - **Por referencia**: arreglos/structs o cuando el callee **modifica** el dato del llamador.  
-> - **`const`** para garantizar no modificación de datos referenciados.
+#### `upsertResult`
+- **Descripción:** "Update or Insert". Busca a un jugador en el archivo CSV. Si existe, suma sus estadísticas; si no, crea un nuevo registro al final.
+- **Validaciones:** Verifica que el archivo `ranking.csv` pueda abrirse en modo lectura/escritura. Valida que el nombre no sea nulo.
+- **Parámetros:**
+  - `name` (Referencia - `const char*`): Nombre del jugador.
+  - `wins`, `draws`, `losses`, `score` (Valor - `int`): Estadísticas a sumar.
+- **Retorno:** `int` (1 = Guardado exitoso, 0 = Error de E/S).
+## 3) Compilación
 
-### 2.1 Módulo **UI** (`ui.h` / `ui.c`)
-- `void clearScreen(void);`  
-  **Hace**: limpia consola (método simple y portable).  
-  **Parámetros/Retorno**: n/a.
+### Opción A: Compilación Manual (GCC)
+Si no usas Make, es **obligatorio** enlazar la librería de sockets (`-lws2_32`).
 
-- `void showMainMenu(void);`  
-  **Hace**: imprime menú (Jugar, Ranking, Ayuda, Salir).
-
-- `void printBoard(const char board[3][3]);`  
-  **Hace**: dibuja el tablero.  
-  **Parámetros**: `board` por referencia constante.
-
-- `void showHelp(void);`  
-  **Hace**: muestra instrucciones.
-
-- `void pauseEnter(void);`  
-  **Hace**: espera `Enter` para continuar.
-
----
-
-### 2.2 Módulo **Game** (`game.h` / `game.c`)
-- `void initBoard(char board[3][3]);`  
-  **Hace**: rellena con `' '`.
-
-- `int isValidCell(int r, int c);`  
-  **Valida**: `1..3` en ambas coordenadas.  
-  **Retorno**: `1` válido / `0` inválido.
-
-- `int isCellEmpty(const char board[3][3], int r, int c);`  
-  **Valida**: casilla libre (`' '`).  
-  **Retorno**: `1` libre / `0` ocupada.
-
-- `int applyMove(char board[3][3], int r, int c, char sym);`  
-  **Hace**: coloca `sym` si la celda es válida y libre.  
-  **Retorno**: `1` éxito / `0` fallo.
-
-- `int checkWin(const char board[3][3], char sym);`  
-  **Hace**: evalúa 8 líneas (3 filas, 3 columnas, 2 diagonales).  
-  **Retorno**: `1` gana / `0` no.
-
-- `int boardFull(const char board[3][3]);`  
-  **Retorno**: `1` si no hay `' '`.
-
-- `int readMove(int *r, int *c);`  
-  **Hace**: lee `r` y `c` de `stdin` (maneja errores de formato / `q` opcional).  
-  **Parámetros**: por referencia.  
-  **Retorno**: `1` ok / `0` cancelado o inválido persistente.
-
-- `int scoreOf(int wins, int draws, int losses);`  
-  **Hace**: `3*wins + 1*draws + 0*losses`.
-
-- `void playPVP(char name1[], char name2[]);`  
-  **Hace**: ciclo de turnos humano vs humano.
-
-- `void playPVC(char name1[]);`  
-  **Hace**: humano vs PC (PC es "PC").
-
----
-
-### 2.3 Módulo **AI** (`ai.h` / `ai.c`)
-- `void pcMove(char board[3][3], char pcSym, char humanSym);`  
-  **Heurística** (en orden):  
-  1) Ganar si hay jugada inmediata.  
-  2) Bloquear victoria del humano.  
-  3) Tomar centro.  
-  4) Tomar esquina libre.  
-  5) Tomar lateral libre.  
-  **Parámetros**: tablero por referencia; símbolos por valor.
-
----
-
-### 2.4 Módulo **IO / Persistencia** (`io.h` / `io.c`)
-> Archivo: `ranking.csv` con columnas `Nombre,G,E,P,Puntaje`.
-
-- `int saveResult(const char *name, int wins, int draws, int losses, int score);`  
-  **Hace**: `append` de una fila al CSV.  
-  **Valida**: `name` no vacío, `fopen` no `NULL`.  
-  **Retorno**: `1` ok / `0` error.
-
-- `int loadRanking(PlayerRecord arr[], int max, const char *filePath);`  
-  **Hace**: lee hasta `max` registros; ignora líneas corruptas.  
-  **Retorno**: **n** (≥0) o `-1` si error de archivo.
-
-- `void sortRankingDesc(PlayerRecord arr[], int n);`  
-  **Hace**: ordena por `score` descendente (y `name` ascendente como desempate opcional).
-
-- `void showRanking(const PlayerRecord arr[], int n);`  
-  **Hace**: imprime tabla formateada en consola.
-
----
-
-### 2.5 Módulo **App / Menú** (`app.h` / `app.c`)
-- `int mainMenuLoop(void);`  
-  **Hace**: ciclo de **Menú Principal** (Jugar, Ranking, Ayuda, Salir).  
-  **Retorno**: `0` al salir.
-
-- `void startGameFlow(void);`  
-  **Hace**: pide **modo** (JvJ/JvPC), captura nombres, ejecuta partida y al final guarda resultado y ofrece “¿Jugar de nuevo?”.
-
----
-
-## 3) Prototipos ejemplo (headers)
-
-### `game.h`
-```c
-#ifndef GAME_H
-#define GAME_H
-
-// Nombre de la IA
-#define AI_PLAYER_NAME "Jarvis (PC)"
-
-void initBoard(char board[3][3]);
-int ADC isValidCell(int r, int c);
-int  isCellEmpty(const char board[3][3], int r, int c);
-int  applyMove(char board[3][3], int r, int c, char sym);
-int  checkWin(const char board[3][3], char sym);
-int  boardFull(const char board[3][3]);
-int  readMove(int *r, int *c);
-int  scoreOf(int wins, int draws, int losses);
-void playPVP(void);
-void playPVC(void)
-
-#endif
+```bash
+gcc src/*.c -o gato.exe -lws2_32 -std=c11 -O2 -s -Wall
 ```
 
-### `ai.h`
-```c
-#ifndef AI_H
-#define AI_H
-void pcMove(char board[3][3], char pcSym, char humanSym);
-#endif
-```
+## 4) Tamaño y Rendimiento
+- **Tamaño del Ejecutable:** ~38 KB (Linkeo estático, sin dependencias externas).
 
-### `io.h`
-```c
-#ifndef IO_H
-#define IO_H
-
-#define NAME_MAX 32
-
-typedef struct {
-    char name[NAME_MAX];
-    int  wins, draws, losses;
-    int  score;
-} PlayerRecord;
-
-int  saveResult(const char *name, int wins, int draws, int losses, int score);
-int  loadRanking(PlayerRecord arr[], int max, const char *filePath);
-void sortRankingDesc(PlayerRecord arr[], int n);
-void showRanking(const PlayerRecord arr[], int n);
-
-#endif
-```
-
-### `ui.h`
-```c
-#ifndef UI_H
-#define UI_H
-void clearScreen(void);
-void showMainMenu(void);
-void printBoard(const char board[3][3]);
-void showHelp(void);
-void pauseEnter(void);
-#endif
-```
-
----
-
-## 4) Validaciones clave (resumen)
-- **Entrada de jugada**: `r` y `c` en `1..3`; si no, mensaje de error y reintentar.  
-- **Casilla ocupada**: rechazar y volver a pedir.  
-- **Victoria**: evaluar tras cada jugada con `checkWin`.  
-- **Empate**: `boardFull(...)` y nadie ganó.  
-- **Puntuación**: `score = 3*wins + 1*draws`.  
-- **Persistencia**: guardar con `saveResult(...)` siempre al terminar.  
-- **Ranking**: `loadRanking` → `sortRankingDesc` → `showRanking`.  
-- **Rejugar**: preguntar “¿Jugar de nuevo? (s/n)” y validar.
-
----
-
-## 5) Estimación de memoria (ejemplo)
-- **Durante partida** (sin ranking cargado):  
-  - Tablero: 9 B  
-  - Nombres: 64 B  
-  - Contadores/flujo: < 64 B  
-  - **Total** ≈ **≤ 150 B** (más stack temporal).  
-- **Ranking cargado (1000)**:  
-  - `ranking[]` ≈ **48 KB**  
 ---
