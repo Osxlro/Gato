@@ -1,11 +1,3 @@
-/*
- * utils.c
- *
- * Responsabilidades:
- * - Implementar la función de utilidad 'getSafeLine'.
- *  
- */
-
  // Librerias del juego
 #include "utils.h"
 

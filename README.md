@@ -3,9 +3,6 @@
 > **Nombre:** Oscurin | **Programación Estructurada** | **Fecha:** 2025-11-16 | **Plataforma:** Windows
 
 ## PARTE I - MAPA DE NAVEGACIÓN
-
-> Una vez haya terminado de observar la Sección Parte I, me gustaría tu feedback: https://forms.gle/eRgVNe2f9kKL2PhF7
-
 ### Mapa de navegación (alto nivel)
 
 ```
@@ -48,7 +45,14 @@ d) Volver
 Opcion: _
 ```
 
-### Pantalla: Modo Online (Configuración)
+### Pantalla Selección de Nombre
+```
+-- Modo (*)
+Nombre Jugador 1: ___
+Nombre Jugador 2: ___ (Solo aplica en PVP)
+```
+
+### Pantalla: Modo Online
 ```
 Jugador: Oscurin
 ---------------------------
@@ -61,7 +65,7 @@ Opcion: _
 
 ### Pantalla: Tablero 3x3 (En Partida)
 ```
-Modo: PvP | Turno: Jugador1 (X)
+Modo: (*) | Turno: Jugador1 (X)
 ------------------------------
 
     Col: 1   2   3
@@ -74,6 +78,7 @@ Fil       |   |
 
 Ingresa fila y columna (o 'q' para salir): _
 ```
+> **NOTA: '*'**: Sera el modo que corresponda (PVP, PVC o Online)
 
 #### Mensajes de validación y control
 - **Entrada inválida**: Limpia la pantalla y pide reingresar.
@@ -191,8 +196,7 @@ Comunicación binaria directa sobre Sockets TCP/UDP (`network.c`).
 - **Juego:** Conexión TCP persistente al puerto 8888.
 - **Datos:**
     - Movimiento: 2 bytes `[fila, columna]`.
-    - Handshake: 32 bytes `[Nombre]`.
-    - Control: `{-1, -1}` para rendición.
+    - Handshake (intercambio de nombres): 32 bytes `[Nombre]`.
 
 ### 1.2 Persistencia Local
 - **Archivo:** `ranking.csv`.
@@ -206,7 +210,7 @@ Comunicación binaria directa sobre Sockets TCP/UDP (`network.c`).
 | **Controlador** | `app.c` | Menú principal y navegación. |
 | **Lógica** | `game.c` | Reglas de Gato, validación (DRY), control de turnos PvP/PvC/Online. |
 | **IA** | `ai.c` | Algoritmo para la computadora (intenta ganar, bloquear o tomar centro). |
-| **Red** | `network.c` | Capa de abstracción de Winsock (Sockets, TCP, UDP Broadcast). |
+| **Red** | `network.c` | Uso del winsock (TCP, UDP, Socket). |
 | **Datos** | `io.c` | Gestión de archivo CSV (Ranking). |
 | **Vista** | `ui.c` | Dibujado en consola. |
 
@@ -228,12 +232,12 @@ typedef struct {
     int score;
 } PlayerRecord;
 ```
-**Argumentación**: Se agrupan los datos en un struct para mantener la coherencia lógica y facilitar el ordenamiento (sorting) y la escritura en disco como un solo bloque. name se limita a 32 bytes para prevenir desbordamientos de búfer (Buffer Overflows) y mantener un tamaño fijo predecible.
+**Argumentación**: Se agrupan los datos en un struct para mantener la coherencia lógica y facilitar el ordenamiento (sorting) y la escritura en disco como un solo bloque. name se limita a 32 bytes para prevenir desbordamientos de búfer y mantener un tamaño fijo predecible.
 
-**Estimación de Memoria** (por registro): ```name```: 32 bytes. ```int``` (x4)``: 4 bytes * 4 = 16 bytes.
+**Estimación de Memoria** (por registro): ```name```: 32 bytes. ```int``` (x4): 4 bytes * 4 = 16 bytes.
 
-Total: 48 bytes por jugador. 
-Nota: Para un ranking de 1000 jugadores, el consumo es apenas ~48 KB de RAM.
+Total: `48 bytes` por jugador. 
+Nota: Para un ranking de 1000 jugadores, el consumo es por ~48 KB de RAM.
 
 ### 1.3 Protocolo de Red (Buffers)
 Tipo: `char buffer[2]` (para movimientos) y `char buffer[32]` (para nombres/IPs).
@@ -245,7 +249,6 @@ Estimación:
 - **Handshake**: 32 bytes fijos.
 
 ## 2. Definición de Funciones Principales
-
 A continuación se detallan las funciones core del sistema, especificando su interfaz y comportamiento.
 
 ### Módulo Lógica (`game.c`)
@@ -295,17 +298,9 @@ A continuación se detallan las funciones core del sistema, especificando su int
 ### Módulo Persistencia (`io.c`)
 
 #### `upsertResult`
-- **Descripción:** "Update or Insert". Busca a un jugador en el archivo CSV. Si existe, suma sus estadísticas; si no, crea un nuevo registro al final.
+- **Descripción:** Busca a un jugador en el archivo CSV. Si existe, suma sus estadísticas; si no, crea un nuevo registro al final.
 - **Validaciones:** Verifica que el archivo `ranking.csv` pueda abrirse en modo lectura/escritura. Valida que el nombre no sea nulo.
 - **Parámetros:**
   - `name` (Referencia - `const char*`): Nombre del jugador.
   - `wins`, `draws`, `losses`, `score` (Valor - `int`): Estadísticas a sumar.
 - **Retorno:** `int` (1 = Guardado exitoso, 0 = Error de E/S).
-## 3) Compilación
-
-### Opción A: Compilación Manual (GCC)
-
-```bash
-gcc src/*.c -o gato.exe -lws2_32 -std=c11 -O2 -s -Wall --lws2_32
-```
----
