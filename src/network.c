@@ -270,14 +270,71 @@ int net_discover_host(int port, int timeout_sec, char* found_ip) {
 
 /* ---- ENVIO Y RECEPCION DE DATOS ---- */
 
+// Helper: Asegura que se envíen todos los bytes solicitados (maneja envíos parciales)
+static int send_exact(int socket, const char *buf, int len) {
+    int total = 0;
+    int bytes_left = len;
+    while (total < len) {
+        int n = send(socket, buf + total, bytes_left, 0);
+        if (n == SOCKET_ERROR) return 0;
+        total += n;
+        bytes_left -= n;
+    }
+    return 1;
+}
+
+// Helper: Asegura que se reciban todos los bytes solicitados (maneja fragmentación)
+static int recv_exact(int socket, char *buf, int len) {
+    int total = 0;
+    time_t last_data = time(NULL);
+    time_t last_hb   = time(NULL);
+
+    while (total < len) {
+        // 1. Verificar Timeout Global (Desconexion)
+        if (difftime(time(NULL), last_data) > TIMEOUT_SEC) {
+            printf("Error: Tiempo de espera agotado (Rival no responde).\n");
+            return 0;
+        }
+
+        // 2. Enviar Heartbeat (Keep-Alive) mientras esperamos
+        if (difftime(time(NULL), last_hb) >= HB_INTERVAL) {
+            char hb = (char)HB_MSG;
+            send(socket, &hb, 1, 0); 
+            last_hb = time(NULL);
+        }
+
+        // 3. Select para no bloquear la UI por mucho tiempo
+        fd_set fds; FD_ZERO(&fds); FD_SET(socket, &fds);
+        struct timeval tv = {0, 100000}; // 100ms
+        
+        int res = select(0, &fds, NULL, NULL, &tv);
+        if (res == SOCKET_ERROR) return 0;
+        if (res == 0) continue; // Timeout del select, volvemos al loop
+
+        // 4. Leer 1 byte
+        char b;
+        int n = recv(socket, &b, 1, 0);
+        if (n <= 0) return 0;
+
+        // 5. Filtrar Heartbeat
+        if ((unsigned char)b == HB_MSG) {
+            last_data = time(NULL); // Recibimos señal de vida
+            continue;               // Ignoramos el byte, no es dato
+        }
+
+        buf[total++] = b;
+        last_data = time(NULL);
+    }
+    return 1;
+}
+
 // Envía 2 bytes simples: [fila, columna]
 int net_send_move(int socket, int r, int c) {
     char buffer[2];
     buffer[0] = (char)r;
     buffer[1] = (char)c;
     
-    int sent = send(socket, buffer, 2, 0);
-    if (sent == SOCKET_ERROR) {
+    if (!send_exact(socket, buffer, 2)) {
         printf("Error enviando datos.\n");
         return 0;
     }
@@ -287,12 +344,9 @@ int net_send_move(int socket, int r, int c) {
 // Recibe 2 bytes. Bloquea hasta recibir.
 int net_receive_move(int socket, int *r, int *c) {
     char buffer[2];
-    int valread = recv(socket, buffer, 2, 0);
     
-    if (valread <= 0) {
-        // 0 significa desconexión, <0 significa error
-        return 0; 
-    }
+    // Usamos recv_exact para evitar leer solo 1 byte si hay fragmentación
+    if (!recv_exact(socket, buffer, 2)) return 0;
     
     *r = (int)buffer[0];
     *c = (int)buffer[1];
@@ -301,22 +355,28 @@ int net_receive_move(int socket, int *r, int *c) {
 
 // Enviar Nombre (32 bytes cada uno)
 int net_send_name(int socket, const char* name) {
-    char buffer[32];
-    // Aseguramos que el buffer esté limpio y copiamos el nombre
-    memset(buffer, 0, 32);
-    strncpy(buffer, name, 31);
+    // Enviamos [Version] + [Nombre (32)]
+    char buffer[33];
+    buffer[0] = (char)PROTOCOL_VERSION;
     
-    int sent = send(socket, buffer, 32, 0);
-    return (sent != SOCKET_ERROR);
+    memset(buffer + 1, 0, 32);
+    if (name) strncpy(buffer + 1, name, 31);
+    
+    return send_exact(socket, buffer, 33);
 }
 
 // Recibe Nombre (32 bytes cada uno)
 int net_receive_name(int socket, char* buffer) {
-    // Recibimos exactamente 32 bytes
-    int valread = recv(socket, buffer, 32, 0);
-    if (valread <= 0) return 0;
+    char temp[33];
+    // Recibimos 33 bytes (Version + Nombre)
+    if (!recv_exact(socket, temp, 33)) return 0;
     
-    // Aseguramos terminación nula por seguridad
+    if ((int)temp[0] != PROTOCOL_VERSION) {
+        printf("Error: Version del juego incompatible (Rival: v%d, Local: v%d)\n", (int)temp[0], PROTOCOL_VERSION);
+        return 0;
+    }
+
+    memcpy(buffer, temp + 1, 32);
     buffer[31] = '\0';
     return 1;
 }
@@ -327,13 +387,11 @@ int net_negotiate_rematch(int socket, int my_vote) {
     char send_buf[2];
     send_buf[0] = my_vote ? 'Y' : 'N';
     send_buf[1] = '\0';
-    send(socket, send_buf, 2, 0);
+    send_exact(socket, send_buf, 2);
 
     // 2. Recibir voto rival
     char recv_buf[2];
-    int n = recv(socket, recv_buf, 2, 0);
-    
-    if (n <= 0) return 0; // Error o desconexión
+    if (!recv_exact(socket, recv_buf, 2)) return 0;
     
     int rival_vote = (recv_buf[0] == 'Y');
 

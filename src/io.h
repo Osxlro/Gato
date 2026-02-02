@@ -13,8 +13,7 @@
 #ifndef IO_H
 #define IO_H
 
-// Define la longitud máxima permitida para el nombre de un jugador.
-#define NAME_MAX 32
+#include "config.h"
 
 /*
  * Estructura para almacenar los datos de un jugador en el ranking.

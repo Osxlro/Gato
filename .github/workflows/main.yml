@@ -1,11 +1,11 @@
 # Nombre del "flujo de trabajo"
 name: Build Release Executable
 
-# 1. Cuándo ejecutarse:
-# Esto se activará solo cuando tú "crees una nueva release" en GitHub.
+# 1. Cuándo ejecutarse: Al pushear un tag que empiece por 'v' (ej. v1.0)
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - "v*"
 
 # 2. Qué hacer:
 jobs:
@@ -35,10 +35,13 @@ jobs:
           gcc src/*.c -o gato.exe -std=c11 -s -static -lws2_32
 
       # 7. Paso 4: Subir el .exe a la Release
-      # Esta acción toma el .exe y lo adjunta a la release que acabas de crear.
-      - name: Upload executable to release
+      # Esta acción crea la release automáticamente y sube el archivo
+      - name: Create Release and Upload
         uses: softprops/action-gh-release@v1
         with:
           files: ./gato.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

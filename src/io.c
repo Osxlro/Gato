@@ -46,7 +46,7 @@ static int ieq(const char *a, const char *b) { /* case-insensitive */
 // Carga todos los registros del archivo CSV (por defecto 'ranking.csv') a un array.
 // Devuelve el número de registros leídos, o -1 si hay error.
 int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
-    FILE *f = fopen(filePath ? filePath : "ranking.csv", "r");
+    FILE *f = fopen(filePath ? filePath : RANKING_FILE, "r");
     if (!f) return -1;
     int n = 0;
     while (n < max && !feof(f)) {
@@ -65,7 +65,7 @@ int loadRanking(PlayerRecord arr[], int max, const char *filePath) {
 
 // Sobrescribe el archivo CSV (modo 'w') con todos los registros del array.
 int saveAllRanking(const PlayerRecord arr[], int n, const char *filePath) {
-    FILE *f = fopen(filePath ? filePath : "ranking.csv", "w");
+    FILE *f = fopen(filePath ? filePath : RANKING_FILE, "w");
     if (!f) return 0;
     for (int i = 0; i < n; ++i) {
         if (fprintf(f, "%s,%d,%d,%d,%d\n",
@@ -84,8 +84,8 @@ int upsertResult(const char *name, int wins, int draws, int losses, int score) {
     
     if (!name || !*name) return 0;
 
-    PlayerRecord recs[2000];
-    int n = loadRanking(recs, 2000, "ranking.csv");
+    PlayerRecord recs[MAX_RANKING_ENTRIES];
+    int n = loadRanking(recs, MAX_RANKING_ENTRIES, RANKING_FILE);
     if (n < 0) n = 0; /* archivo no existe aun, empezamos en 0 */
 
     int idx = -1;
@@ -94,7 +94,7 @@ int upsertResult(const char *name, int wins, int draws, int losses, int score) {
         if (ieq(recs[i].name, name)) { idx = i; break; }
     }
     if (idx < 0) { /* nuevo jugador */
-        if (n >= 2000) return 0; // Array lleno
+        if (n >= MAX_RANKING_ENTRIES) return 0; // Array lleno
         strncpy(recs[n].name, name, NAME_MAX - 1);
         recs[n].name[NAME_MAX - 1] = '\0';
         recs[n].wins   = wins;
@@ -109,7 +109,7 @@ int upsertResult(const char *name, int wins, int draws, int losses, int score) {
         recs[idx].score  += score;
     }
     // Guardar todos los registros de vuelta al archivo
-    return saveAllRanking(recs, n, "ranking.csv");
+    return saveAllRanking(recs, n, RANKING_FILE);
 }
 
 // Ordena el array de registros por puntaje (descendente).

@@ -26,21 +26,23 @@
 
 /* Funciones de IA */
 
-// Busca una jugada ganadora inmediata para 'simbolo (sym)' y la aplica si la encuentra.
-// Devuelve 1 si encontró y aplicó la jugada, 0 si no.
-static int tryWin(char board[3][3], char sym) {
-    // Coloca sym en alguna celda vacía que produzca victoria inmediata.
+// Busca si existe una jugada que otorgue la victoria inmediata a 'sym'.
+// Si la encuentra, guarda las coordenadas en outR y outC y devuelve 1.
+static int findWinningMove(char board[3][3], char sym, int *outR, int *outC) {
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
             if (board[r][c] == ' ') {
-                board[r][c] = sym; // Probar jugada
+                board[r][c] = sym; // Simular
                 int win = checkWin(board, sym);
-                if (win) return 1;     // Victoria, Dejamos la jugada puesta.
-                board[r][c] = ' ';     // Revertimos la jugada si no era ganadora.
+                board[r][c] = ' '; // Revertir
+                if (win) {
+                    *outR = r;
+                    *outC = c;
+                    return 1;
+                }
             }
         }
     }
-    return 0; // No se encontró jugada ganadora.
 }
 
 // Ocupa la casilla central (1,1 en coordenadas 0-index) si está libre.
@@ -69,26 +71,20 @@ static int takeFirst(char board[3][3], char sym, const int coords[][2], int n) {
 // Función principal de la IA: decide y aplica el mejor movimiento.
 void pcMove(char board[3][3], char pcSym, char humanSym) {
     
+    int r, c;
+
     // Estrategias:
     // 1) Ganar si es posible
-    if (tryWin(board, pcSym)) return;
+    if (findWinningMove(board, pcSym, &r, &c)) {
+        board[r][c] = pcSym;
+        return;
+    }
 
     // 2) Bloquear victoria del Jugador
-    // Nota: Este doble bucle es O(N^2) para un tablero de N x N (aquí N=3), lo cual es aceptable para el juego,
-    // pero podría ser ineficiente en tableros más grandes.
-    //Coloca temporalmente la jugada del Jugador; si gana, la bloquea poniendo pcSym
-    for (int r = 0; r < 3; ++r) {
-        for (int c = 0; c < 3; ++c) {
-            if (board[r][c] == ' ') {
-                board[r][c] = humanSym; // Simular jugada humana
-                int humanWin = checkWin(board, humanSym);
-                board[r][c] = ' '; // Revertir simulación
-                if (humanWin) {
-                    board[r][c] = pcSym; // ¡Bloquear aquí!
-                    return;
-                }
-            }
-        }
+    // Reutilizamos la lógica de búsqueda para ver si el humano ganaría.
+    if (findWinningMove(board, humanSym, &r, &c)) {
+        board[r][c] = pcSym; // Bloquear
+        return;
     }
 
     // 3) Tomar centro

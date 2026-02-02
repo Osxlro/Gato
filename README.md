@@ -1,5 +1,7 @@
 # GATO JUEGO PROYECTO
 
+![Build Status](https://github.com/Oscurin/Gato/actions/workflows/main.yml/badge.svg)
+
 > **Nombre:** Oscurin | **Programación Estructurada** | **Fecha:** 2025-11-16 | **Plataforma:** Windows
 
 ## PARTE I - MAPA DE NAVEGACIÓN
@@ -185,7 +187,7 @@ Se guarda el Score del usuario en el Ranking local.
 > **Suposiciones de entorno**
 > - **Sistema Operativo:** Windows (Requerido por librería `winsock2`).
 > - **Compilador:** GCC (MinGW recomendado).
-> - **Arquitectura:** x64.
+> - **Arquitectura:** x64 / x86.
 > - **Paradigma:** Estructurado y modular.
 
 ## 1) Estructura y Datos

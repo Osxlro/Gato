@@ -1,13 +1,7 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-// --- Configuración de Red ---
-#define GAME_PORT           8888        // Puerto TCP para el juego
-#define DISCOVERY_PORT      8889        // Puerto UDP para autodescubrimiento
-#define DISCOVERY_TIMEOUT   30          // Segundos de espera para buscar host
-#define DISCOVERY_MSG       "GATO_REQ"  // Mensaje de búsqueda
-#define DISCOVERY_ACK       "GATO_ACK"  // Mensaje de respuesta
-#define HOST_TIMEOUT        60
+#include "config.h"
 
 // --- Descubrimiento Automático (LAN) ---
 
