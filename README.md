@@ -193,12 +193,13 @@ Se guarda el Score del usuario en el Ranking local.
 ## 1) Estructura y Datos
 
 ### 1.1 Protocolo de Red (Modo Online)
-Comunicación binaria directa sobre Sockets TCP/UDP (`network.c`).
+Comunicación binaria optimizada sobre Sockets TCP/UDP.
 - **Autodescubrimiento:** UDP Broadcast al puerto 8889.
 - **Juego:** Conexión TCP persistente al puerto 8888.
+- **Mantenimiento:** Sistema de *Heartbeat* (0xFE) cada 2 segundos para evitar cierres de socket inactivos.
 - **Datos:**
-    - Movimiento: 2 bytes `[fila, columna]`.
-    - Handshake (intercambio de nombres): 32 bytes `[Nombre]`.
+    - Movimiento: 2 bytes `[fila, columna]`. El valor `[0, 0]` se reserva para la señal de **Rendición**.
+    - Handshake: 33 bytes `[Versión (1 byte) + Nombre (32 bytes)]`.
 
 ### 1.2 Persistencia Local
 - **Archivo:** `ranking.csv`.
@@ -247,8 +248,8 @@ Tipo: `char buffer[2]` (para movimientos) y `char buffer[32]` (para nombres/IPs)
 **Argumentación**: La comunicación por Sockets TCP/UDP es costosa. Enviamos la mínima cantidad de datos posible (binarios) en lugar de textos largos (JSON/XML).
 
 Estimación:
-- **Paquete de movimiento**: 2 bytes (Fila + Columna).
-- **Handshake**: 32 bytes fijos.
+- **Paquete de movimiento**: 2 bytes.
+- **Handshake**: 33 bytes (incluye verificación de versión).
 
 ## 2. Definición de Funciones Principales
 A continuación se detallan las funciones core del sistema, especificando su interfaz y comportamiento.

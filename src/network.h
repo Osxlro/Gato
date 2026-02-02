@@ -1,7 +1,17 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#include "config.h"
+// --- Configuración de Red ---
+#define PROTOCOL_VERSION    1       // Version del protocolo de red
+#define GAME_PORT           8888    // Puerto TCP principal
+#define DISCOVERY_PORT      8889    // Puerto UDP para broadcast
+#define DISCOVERY_TIMEOUT   30      // Segundos para buscar partida
+#define HOST_TIMEOUT        60      // Segundos que el host espera conexión
+#define TIMEOUT_SEC         10      // Timeout de desconexión en partida (TCP)
+#define HB_INTERVAL         2       // Intervalo de Heartbeat (segundos)
+#define HB_MSG              0xFE    // Byte de Heartbeat (0xFE evita conflicto con -1)
+#define DISCOVERY_MSG       "GATO_REQ"
+#define DISCOVERY_ACK       "GATO_ACK"
 
 // --- Descubrimiento Automático (LAN) ---
 

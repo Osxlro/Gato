@@ -13,7 +13,10 @@
 #ifndef IO_H
 #define IO_H
 
-#include "config.h"
+// --- Datos y Persistencia ---
+#define NAME_MAX            32      // Longitud máxima de nombre de jugador
+#define MAX_RANKING_ENTRIES 2000    // Límite de registros en memoria para el ranking
+#define RANKING_FILE        "ranking.csv"
 
 /*
  * Estructura para almacenar los datos de un jugador en el ranking.

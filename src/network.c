@@ -20,7 +20,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <time.h>
-
 /* ---- INICIALIZACION Y LIMPIEZA ---- */
 
 // Inicializa Winsock. Necesario antes de usar cualquier función de red en Windows.
