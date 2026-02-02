@@ -86,13 +86,13 @@ static int checkAndPrintEnd(const char board[3][3], char sym, const char* winner
     if (checkWin(board, sym)) {
         clearScreen(); 
         printBoard(board);
-        printf("\n¡GANASTE %s (%c)!\n", winnerName, sym);
+        printf("\nGANO %s (%c)!\n", winnerName, sym);
         return 1; // Victoria
     }
     if (boardFull(board)) {
         clearScreen(); 
         printBoard(board);
-        puts("\n¡EMPATE! Tablero lleno.");
+        puts("\nEMPATE! Tablero lleno.");
         return 1; // Empate
     }
     return 0; // Sigue jugando
@@ -197,8 +197,8 @@ void playPVC(void) {
 
     for (;;) {
         char headerStr[128];
-        snprintf(headerStr, sizeof(headerStr), "Modo: PvPC | Turno: %s", 
-                 current==0 ? human : pcName);
+        snprintf(headerStr, sizeof(headerStr), "Modo: PvPC | Turno: %s (%c)", 
+                 current == 0 ? human : pcName, (current==starter) ? 'X' : 'O');
 
         clearScreen();
         puts(headerStr);
