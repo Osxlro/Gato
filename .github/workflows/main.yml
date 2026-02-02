@@ -10,6 +10,10 @@ on:
 # 2. Qué hacer:
 jobs:
   build:
+    # Otorgar permisos para crear la release y subir archivos
+    permissions:
+      contents: write
+
     # 3. La máquina virtual que usaremos:
     # Usamos la última versión de Windows (para que compile un .exe)
     runs-on: windows-latest
