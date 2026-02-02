@@ -333,11 +333,18 @@ for (;;) {
                 int res = getValidMove(board, &r, &c, headerStr);
 
                 if (res == -1) { 
+                    // AVISAR AL RIVAL QUE ME RINDO
+                    net_send_move(socket_fd, -1, -1);
                     gameEnded = 1; break;
                 }
                 
                 applyMove(board, r, c, mySym);
-                net_send_move(socket_fd, r, c);
+                
+                // Verificar si el envio fallo (Rival desconectado mientras pensabamos)
+                if (!net_send_move(socket_fd, r, c)) {
+                    puts("Error de conexion al enviar jugada.");
+                    playing = 0; gameEnded = 1; break;
+                }
 
                 if (checkWin(board, mySym)) {
                     clearScreen(); printBoard(board);

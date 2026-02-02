@@ -198,8 +198,7 @@ int net_host_wait_for_client(int tcp_port) {
         // CASO B: UDP (Búsqueda)
         if (FD_ISSET(udp_fd, &readfds)) {
             char buf[32];
-            // Leemos sizeof(buf)-1 para dejar espacio al caracter nulo final
-            int n = recvfrom(udp_fd, buf, sizeof(buf) - 1, 0, (struct sockaddr*)&sender_addr, &sender_len);
+            int n = recvfrom(udp_fd, buf, sizeof(buf), 0, (struct sockaddr*)&sender_addr, &sender_len);
             if (n > 0) {
                 buf[n] = 0;
                 if (strstr(buf, DISCOVERY_MSG)) {
@@ -332,8 +331,15 @@ static int recv_exact(int socket, char *buf, int len) {
 // Envía 2 bytes simples: [fila, columna]
 int net_send_move(int socket, int r, int c) {
     char buffer[2];
-    buffer[0] = (char)r;
-    buffer[1] = (char)c;
+    
+    // Protocolo: Si r es -1 (Rendición), enviamos 0,0
+    if (r == -1) {
+        buffer[0] = 0;
+        buffer[1] = 0;
+    } else {
+        buffer[0] = (char)r;
+        buffer[1] = (char)c;
+    }
     
     if (!send_exact(socket, buffer, 2)) {
         printf("Error enviando datos.\n");
@@ -349,6 +355,13 @@ int net_receive_move(int socket, int *r, int *c) {
     // Usamos recv_exact para evitar leer solo 1 byte si hay fragmentación
     if (!recv_exact(socket, buffer, 2)) return 0;
     
+    // Protocolo: Si recibimos 0,0 es Rendición
+    if (buffer[0] == 0 && buffer[1] == 0) {
+        *r = -1;
+        *c = -1;
+        return 1;
+    }
+
     *r = (int)buffer[0];
     *c = (int)buffer[1];
     return 1;
