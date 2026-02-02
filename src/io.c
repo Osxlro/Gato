@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h> // Para qsort
 
 // Compara dos cadenas de texto ignorando mayúsculas/minúsculas ('i' = ignore).
 static int ieq(const char *a, const char *b) { /* case-insensitive */
@@ -112,25 +113,22 @@ int upsertResult(const char *name, int wins, int draws, int losses, int score) {
     return saveAllRanking(recs, n, RANKING_FILE);
 }
 
+// Función comparadora para qsort
+static int comparePlayers(const void *a, const void *b) {
+    const PlayerRecord *pA = (const PlayerRecord *)a;
+    const PlayerRecord *pB = (const PlayerRecord *)b;
+
+    // 1. Mayor puntaje primero (Descendente)
+    if (pB->score != pA->score) return pB->score - pA->score;
+    
+    // 2. Desempate por nombre alfabético (Ascendente)
+    return strcmp(pA->name, pB->name);
+}
+
 // Ordena el array de registros por puntaje (descendente).
 // Usa el nombre (ascendente) como criterio de desempate.
 void sortRankingDesc(PlayerRecord arr[], int n) {
-    // Ordenamiento de burbuja simple
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j + 1 < n; ++j) {
-            int swap = 0;
-            if (arr[j].score < arr[j+1].score) {
-                swap = 1;
-            } else if (arr[j].score == arr[j+1].score) {
-                if (strcmp(arr[j].name, arr[j+1].name) > 0) swap = 1;
-            }
-            if (swap) {
-                PlayerRecord tmp = arr[j];
-                arr[j]   = arr[j+1];
-                arr[j+1] = tmp;
-            }
-        }
-    }
+    qsort(arr, n, sizeof(PlayerRecord), comparePlayers);
 }
 
 // Muestra el ranking formateado en la consola.

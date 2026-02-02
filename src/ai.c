@@ -22,6 +22,7 @@
  // Librerias del Juego
 #include "ai.h"
 #include "game.h" // Necesita checkWin, applyMove, etc.
+#include <stdlib.h> // Para rand()
 
 
 /* Funciones de IA */
@@ -66,6 +67,16 @@ static int takeFirst(char board[3][3], char sym, const int coords[][2], int n) {
     return 0;
 }
 
+// Mezcla un array de coordenadas para dar variedad a la IA
+static void shuffleCoords(int coords[][2], int n) {
+    for (int i = 0; i < n - 1; i++) {
+        int j = i + rand() / (RAND_MAX / (n - i) + 1);
+        int t0 = coords[j][0]; int t1 = coords[j][1];
+        coords[j][0] = coords[i][0]; coords[j][1] = coords[i][1];
+        coords[i][0] = t0; coords[i][1] = t1;
+    }
+}
+
 /* IA Principal */
 
 // Función principal de la IA: decide y aplica el mejor movimiento.
@@ -91,11 +102,13 @@ void pcMove(char board[3][3], char pcSym, char humanSym) {
     if (takeCenter(board, pcSym)) return;
 
     // 4) Tomar esquina libre (coordenadas 0-index)
-    static const int corners[4][2] = { {0,0},{0,2},{2,0},{2,2} };
+    int corners[4][2] = { {0,0},{0,2},{2,0},{2,2} };
+    shuffleCoords(corners, 4); // Aleatorizar orden
     if (takeFirst(board, pcSym, corners, 4)) return;
 
     // 5) Tomar lateral libre (coordenadas 0-index)
-    static const int sides[4][2]   = { {0,1},{1,0},{1,2},{2,1} };
+    int sides[4][2]   = { {0,1},{1,0},{1,2},{2,1} };
+    shuffleCoords(sides, 4); // Aleatorizar orden
     if (takeFirst(board, pcSym, sides, 4)) return;
 
     // 6) Tomar la primera libre (no debería ser necesario si la lógica anterior cubre todos los casos).

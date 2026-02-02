@@ -198,7 +198,8 @@ int net_host_wait_for_client(int tcp_port) {
         // CASO B: UDP (Búsqueda)
         if (FD_ISSET(udp_fd, &readfds)) {
             char buf[32];
-            int n = recvfrom(udp_fd, buf, sizeof(buf), 0, (struct sockaddr*)&sender_addr, &sender_len);
+            // Leemos sizeof(buf)-1 para dejar espacio al caracter nulo final
+            int n = recvfrom(udp_fd, buf, sizeof(buf) - 1, 0, (struct sockaddr*)&sender_addr, &sender_len);
             if (n > 0) {
                 buf[n] = 0;
                 if (strstr(buf, DISCOVERY_MSG)) {
